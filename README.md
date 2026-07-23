@@ -152,7 +152,7 @@ Client events push to `window.dataLayer` (GTM) and Meta Pixel if `fbq` is presen
 1. **Dashboard → Settings → Checkout**: enable Apple Pay & Google Pay (domain verification for Apple Pay).
 2. **Settings → Adaptive Pricing**: turn ON → AUD/EUR/GBP shoppers see local prices automatically. No code.
 3. Swap `STRIPE_SECRET_KEY` to `sk_live_…` in Vercel env.
-4. Create a **live** webhook endpoint → `https://tuneofus.com/api/stripe/webhook`, event `checkout.session.completed` → copy the live `whsec_…` to `STRIPE_WEBHOOK_SECRET`.
+4. Create a **live** webhook endpoint → **`https://www.tuneofus.com/api/stripe/webhook`** (⚠️ MUST use the canonical `www` host — the apex `tuneofus.com` 308-redirects and **Stripe does not follow redirects**, so an apex endpoint silently fails every delivery). Event: `checkout.session.completed` → copy the live `whsec_…` to `STRIPE_WEBHOOK_SECRET`.
 5. Place one real order. Confirm n8n received the payload and the song delivered.
 
 ## Launch checklist
@@ -163,7 +163,9 @@ Client events push to `window.dataLayer` (GTM) and Meta Pixel if `fbq` is presen
 - [ ] GTM container + Meta Pixel in `app/layout.tsx`; verify events in Meta Events Manager
 - [ ] Stripe live keys + live webhook (above)
 - [ ] `AUTOMATION_WEBHOOK_URL` pointing at production n8n; test an end-to-end order
-- [ ] `NEXT_PUBLIC_SITE_URL=https://tuneofus.com` in Vercel env
+- [ ] `NEXT_PUBLIC_SITE_URL=https://www.tuneofus.com` in Vercel env (canonical www host)
+- [ ] `EMAIL_FROM=TuneOfUs <hello@tuneofus.com>` in Vercel (or rely on the derived default) — must be a verified-domain address, never onboarding@resend.dev
+- [ ] Check config anytime: `GET /api/health` reports which delivery env vars are set
 - [ ] Real Trustpilot profile linked (or remove the ⭐ trust chip until you have one)
 - [ ] Verify `reviewCount` in `app/page.tsx` JSON-LD reflects reality (search engines penalize fake review markup)
 - [ ] Run one $1 test ad → confirm UTM shows up in Stripe metadata
