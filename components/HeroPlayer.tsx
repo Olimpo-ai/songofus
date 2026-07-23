@@ -65,27 +65,30 @@ export default function HeroPlayer() {
 
   return (
     <div id="hero-player" className="card-paper p-4 sm:p-5">
-      <div className="flex items-center justify-between gap-3">
-        <div className="flex gap-1.5" role="tablist" aria-label="Sample songs">
-          {content.hero.samples.map((s) => (
-            <button
-              key={s.id}
-              role="tab"
-              aria-selected={active.id === s.id}
-              onClick={() => pick(s)}
-              className={`rounded-full px-3.5 py-1.5 text-sm font-semibold transition-colors ${
-                active.id === s.id
-                  ? "bg-burgundy text-linen"
-                  : "bg-blush-soft text-burgundy hover:bg-blush"
-              }`}
-            >
-              {s.label}
-            </button>
-          ))}
-        </div>
+      <div className="mb-1.5 flex items-center justify-between gap-3">
+        <span className="text-xs font-bold uppercase tracking-[0.14em] text-burgundy/60">
+          {content.hero.samples.length} styles · tap to hear
+        </span>
         <span className="hidden font-script text-lg text-burgundy sm:block" aria-hidden="true">
           {content.hero.annotation}
         </span>
+      </div>
+      <div className="no-scrollbar -mx-1 flex snap-x gap-1.5 overflow-x-auto px-1 pb-1" role="tablist" aria-label="Sample songs">
+        {content.hero.samples.map((s) => (
+          <button
+            key={s.id}
+            role="tab"
+            aria-selected={active.id === s.id}
+            onClick={() => pick(s)}
+            className={`shrink-0 snap-start rounded-full px-3.5 py-1.5 text-sm font-semibold transition-colors ${
+              active.id === s.id
+                ? "bg-burgundy text-linen"
+                : "bg-blush-soft text-burgundy hover:bg-blush"
+            }`}
+          >
+            {s.label}
+          </button>
+        ))}
       </div>
 
       <div className="mt-3 flex items-center gap-3">
