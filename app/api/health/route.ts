@@ -6,8 +6,11 @@ import { NextResponse } from "next/server";
  * without exposing secrets. Safe to keep, or delete once verified.
  */
 export async function GET() {
+  const sk = process.env.STRIPE_SECRET_KEY || "";
+  const stripeMode = sk.startsWith("sk_live") ? "live" : sk.startsWith("sk_test") ? "test" : "unknown";
   return NextResponse.json({
     stripeSecret: !!process.env.STRIPE_SECRET_KEY,
+    stripeMode, // "live" once you switch off test mode
     stripeWebhookSecret: !!process.env.STRIPE_WEBHOOK_SECRET,
     kieKey: !!process.env.KIE_API_KEY,
     resendKey: !!process.env.RESEND_API_KEY,
