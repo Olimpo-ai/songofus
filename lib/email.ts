@@ -1,4 +1,5 @@
 import { Resend } from "resend";
+import { songPageUrl } from "./songlink";
 
 /**
  * Transactional email via Resend, tuned to the occasion the buyer chose.
@@ -127,16 +128,6 @@ function header(eyebrow: string, reverent: boolean): string {
   </td></tr>`;
 }
 
-function trackCard(title: string, url: string, index: number): string {
-  return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:0 0 12px;">
-    <tr><td style="background:${CARD};border:1px solid rgba(138,15,51,.12);border-radius:16px;padding:20px;text-align:center;">
-      <div style="font-family:${sans};font-size:12px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:${BURGUNDY};opacity:.7;">Version ${index}</div>
-      <div style="font-family:${serif};font-size:19px;color:${DEEP};margin:4px 0 14px;">${title}</div>
-      <a href="${url}" style="display:inline-block;background:linear-gradient(180deg,${GOLD_SHEEN},${GOLD});color:${LINEN};font-family:${sans};font-weight:700;text-decoration:none;padding:13px 30px;border-radius:999px;font-size:15px;">Listen &amp; download</a>
-    </td></tr>
-  </table>`;
-}
-
 export async function sendConfirmationEmail(opts: { to: string; theirName: string; occasion?: string }) {
   const { to, theirName } = opts;
   const name = theirName?.trim() || "them";
@@ -144,15 +135,15 @@ export async function sendConfirmationEmail(opts: { to: string; theirName: strin
     header("We're on it", false) +
     `<tr><td style="background:${LINEN};border:1px solid rgba(138,15,51,.1);border-top:0;border-radius:0 0 20px 20px;padding:28px 24px;">
       <h1 style="font-family:${serif};font-size:25px;line-height:1.25;color:${DEEP};margin:0 0 12px;">We're writing ${name}'s song right now.</h1>
-      <p style="font-family:${sans};font-size:16px;line-height:1.65;color:${MUTE};margin:0 0 14px;">Your order came through — thank you. Our studio is turning your story into a real, studio-quality song. It lands in this inbox <strong style="color:${INK};">within the hour</strong>.</p>
-      <p style="font-family:${sans};font-size:15px;line-height:1.65;color:${MUTE};margin:0;">While you wait: get your camera ready. You'll want to film ${name}'s reaction. Tag <strong style="color:${BURGUNDY};">#MyTuneOfUs</strong>.</p>
+      <p style="font-family:${sans};font-size:16px;line-height:1.65;color:${MUTE};margin:0 0 14px;">Your order came through — thank you. Our studio is turning your story into a real, studio-quality song, and it usually lands in this inbox <strong style="color:${INK};">within a few minutes</strong>.</p>
+      <p style="font-family:${sans};font-size:15px;line-height:1.65;color:${MUTE};margin:0;">Quick tip: get your camera ready. You'll want to film ${name}'s reaction. Tag <strong style="color:${BURGUNDY};">#MyTuneOfUs</strong>.</p>
     </td></tr>`;
   return getResend().emails.send({
     from: FROM,
     to,
     replyTo: REPLY_TO,
     subject: `We're writing ${name}'s song right now`,
-    html: shell(inner, `${name}'s song is being written — it'll arrive within the hour.`),
+    html: shell(inner, `${name}'s song is being written — it'll arrive in a few minutes.`),
   });
 }
 
@@ -172,14 +163,59 @@ export function renderSongEmail(opts: SongEmailOpts): { subject: string; html: s
   const { theirName, yourName, style, occasion = "", tracks } = opts;
   const t = occasionTheme(occasion, theirName, yourName);
   const name = theirName?.trim() || "them";
+  const clean = tracks.filter((x) => x.audioUrl);
   const styleTag = style ? `<span style="font-family:${sans};font-size:12px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:${BURGUNDY};opacity:.75;">${style}${occasion ? ` &nbsp;·&nbsp; ${occasion}` : ""}</span>` : "";
 
-  const cards = tracks
-    .filter((x) => x.audioUrl)
-    .map((x, i) => trackCard(x.title || `${name}'s song`, x.audioUrl, i + 1))
-    .join("");
+  // The song page: listen, save-to-phone, and one-tap sharing all live here.
+  const link = songPageUrl(SITE, {
+    n: theirName,
+    y: yourName,
+    o: occasion,
+    s: style ?? "",
+    t: clean.map((x, i) => ({ title: x.title || `${name}'s song${clean.length > 1 ? ` (v${i + 1})` : ""}`, url: x.audioUrl })),
+  });
 
-  const tipBox = `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:6px 0 0;">
+  const primary = `<table role="presentation" cellpadding="0" cellspacing="0" style="margin:4px auto 0;"><tr><td style="border-radius:999px;background:linear-gradient(180deg,${GOLD_SHEEN},${GOLD});">
+    <a href="${link}" style="display:inline-block;padding:16px 34px;font-family:${sans};font-weight:800;font-size:17px;color:${LINEN};text-decoration:none;">▶&nbsp; Open ${name}'s song</a>
+  </td></tr></table>`;
+
+  const doThis = `<p style="font-family:${sans};font-size:13.5px;line-height:1.6;color:${MUTE};margin:12px 0 0;text-align:center;">
+    Listen, <strong style="color:${INK};">save it to your phone</strong>, and share it — all in one tap.
+  </p>`;
+
+  // Direct save-to-phone links (force download via our proxy)
+  const dlLinks = clean
+    .map((x, i) => {
+      const fn = `${name}-song${clean.length > 1 ? `-v${i + 1}` : ""}`;
+      const href = `${SITE}/api/download?u=${encodeURIComponent(x.audioUrl)}&name=${encodeURIComponent(fn)}`;
+      const label = clean.length > 1 ? `Save version ${i + 1}` : "Save the MP3";
+      return `<a href="${href}" style="font-family:${sans};font-size:13px;font-weight:700;color:${BURGUNDY};text-decoration:none;white-space:nowrap;">↓ ${label}</a>`;
+    })
+    .join(`<span style="color:#d9c9b0;">&nbsp;&nbsp;·&nbsp;&nbsp;</span>`);
+
+  const shareText = encodeURIComponent(`Listen to the song we made for ${name} 🎵\n${link}`);
+  const waHref = `https://wa.me/?text=${shareText}`;
+  const fbHref = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(link)}`;
+
+  const shareRow = t.reverent
+    ? ""
+    : `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:20px 0 0;">
+        <tr><td style="border-top:1px solid rgba(138,15,51,.12);padding-top:18px;text-align:center;">
+          <p style="font-family:${sans};font-size:13px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:${BURGUNDY};opacity:.7;margin:0 0 10px;">Share the moment</p>
+          <a href="${waHref}" style="display:inline-block;margin:0 4px;padding:10px 18px;border-radius:999px;background:${CARD};font-family:${sans};font-size:14px;font-weight:700;color:${DEEP};text-decoration:none;">WhatsApp</a>
+          <a href="${fbHref}" style="display:inline-block;margin:0 4px;padding:10px 18px;border-radius:999px;background:${CARD};font-family:${sans};font-size:14px;font-weight:700;color:${DEEP};text-decoration:none;">Facebook</a>
+          <a href="${link}" style="display:inline-block;margin:0 4px;padding:10px 18px;border-radius:999px;background:${CARD};font-family:${sans};font-size:14px;font-weight:700;color:${DEEP};text-decoration:none;">Instagram &amp; more</a>
+          <p style="font-family:${sans};font-size:12.5px;color:#9a94a8;margin:12px 0 0;">Post ${name}'s reaction and tag <strong style="color:${BURGUNDY};">#MyTuneOfUs</strong>.</p>
+        </td></tr>
+      </table>`;
+
+  const giftLine = t.reverent
+    ? ""
+    : `<p style="font-family:${sans};font-size:14px;line-height:1.6;color:${MUTE};margin:16px 0 0;text-align:center;">
+        Want to send it straight to ${name}? Open the song and tap <strong style="color:${INK};">Send it to ${name}</strong>.
+      </p>`;
+
+  const tipBox = `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:18px 0 0;">
     <tr><td style="background:${t.reverent ? "#f3ece4" : BLUSH};border-radius:14px;padding:16px 18px;font-family:${sans};font-size:14px;line-height:1.6;color:${DEEP};">
       ${t.tip}
     </td></tr>
@@ -188,19 +224,22 @@ export function renderSongEmail(opts: SongEmailOpts): { subject: string; html: s
   const inner =
     header(t.eyebrow, t.reverent) +
     `<tr><td style="background:${LINEN};border:1px solid rgba(138,15,51,.1);border-top:0;border-radius:0 0 20px 20px;padding:28px 24px;">
-      ${styleTag ? `<div style="margin:0 0 8px;">${styleTag}</div>` : ""}
-      <h1 style="font-family:${serif};font-size:27px;line-height:1.22;color:${DEEP};margin:0 0 12px;">${t.headline}</h1>
-      <p style="font-family:${sans};font-size:16px;line-height:1.65;color:${MUTE};margin:0 0 22px;">${t.lead}</p>
-      ${cards}
-      <div style="height:8px;"></div>
+      ${styleTag ? `<div style="margin:0 0 8px;text-align:center;">${styleTag}</div>` : ""}
+      <h1 style="font-family:${serif};font-size:27px;line-height:1.22;color:${DEEP};margin:0 0 12px;text-align:center;">${t.headline}</h1>
+      <p style="font-family:${sans};font-size:16px;line-height:1.65;color:${MUTE};margin:0 0 22px;text-align:center;">${t.lead}</p>
+      ${primary}
+      ${doThis}
+      <p style="font-family:${sans};font-size:13px;margin:14px 0 0;text-align:center;">${dlLinks}</p>
+      ${giftLine}
+      ${shareRow}
       ${tipBox}
-      <p style="font-family:${sans};font-size:13.5px;line-height:1.6;color:#9a94a8;margin:18px 0 0;text-align:center;">
+      <p style="font-family:${sans};font-size:13px;line-height:1.6;color:#9a94a8;margin:18px 0 0;text-align:center;">
         Not quite right? Just reply to this email — one free revision, always.
       </p>
     </td></tr>`;
 
   return {
-    subject: t.reverent ? `A song in memory of ${name}` : `${name}'s song is ready`,
+    subject: t.reverent ? `A song in memory of ${name}` : `${name}'s song is ready — listen, save & share`,
     html: shell(inner, t.lead.slice(0, 110)),
   };
 }

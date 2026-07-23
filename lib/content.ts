@@ -355,7 +355,7 @@ export const content = {
 
   thanks: {
     heading: "We're writing your song right now.",
-    sub: "It'll hit your inbox within 1 hour.",
+    sub: "It usually hits your inbox within minutes. Keep an eye out.",
     recapHeading: "Your order",
     upsell: {
       title: `Turn it into a photo video — $${config.price.upsell}`,

@@ -79,6 +79,21 @@ Because the render is async and serverless has no shared memory, the buyer's ema
 
 Set `RESEND_API_KEY` + `EMAIL_FROM` in Vercel. Verified end-to-end locally: a completion callback delivered a real Suno track by email.
 
+### The song page (mobile-first listen / save / share)
+
+The delivery email's primary button opens **`/song?d=<token>`** — a mobile-first page (`components/SongDelivery.tsx`) where any user can, in one tap:
+
+- **Listen** (native audio players per version)
+- **Save to my phone** — a real download. `/api/download` proxies the MP3 back with `Content-Disposition: attachment` so phones save the file instead of opening an in-browser player. (Restricted to known song hosts — not an open proxy.)
+- **Send it to [name]** — WhatsApp / native share, gift-framed
+- **Share** — native share sheet (covers Instagram, Messages, etc.) + explicit WhatsApp, Facebook, Instagram buttons, and copy-link. Instagram has no web post-intent, so that button copies the caption + link and opens Instagram.
+
+The token (`lib/songlink.ts`) carries names, occasion, style and the track URLs — no email/PII — so the link is safe to forward as a gift. The email also includes direct `↓ Save version N` links (same download proxy) and WhatsApp/Facebook share links for people who never leave their inbox.
+
+**Timing:** delivery fires on the Kie completion callback (~2–4 min), not an hour. Confirmation + `/thanks` + delivery copy all say "within minutes."
+
+⚠️ _Track URLs in the token are Kie CDN links; if they ever expire, the page/download break. To harden, copy each MP3 to Vercel Blob on delivery and encode the Blob URL instead._
+
 _Note: if Kie fires the completion callback more than once, the buyer could get a duplicate song email (no durable dedup without a DB). Rare; acceptable for MVP. Add a KV/Postgres `delivered` flag to harden._
 
 Verified end-to-end via the live API. All eight style previews in `public/audio/` are real Suno-generated songs, each written to its genre:
