@@ -51,59 +51,20 @@ export async function POST(req: NextRequest) {
       console.warn("local order update skipped", err);
     }
 
-    // Server-side Purchase event data + full briefing → automation
-    const automationUrl = process.env.AUTOMATION_WEBHOOK_URL;
-    if (automationUrl) {
-      const payload = {
-        event: "purchase",
-        product, // "song" | "video"
-        orderId: data.orderId,
-        stripeSessionId: session.id,
-        amountTotal: session.amount_total,
-        currency: session.currency,
-        paidAt: new Date().toISOString(),
-        briefing: {
-          recipient: data.recipient,
-          occasion: data.occasion,
-          theirName: data.theirName,
-          yourName: data.yourName,
-          story: data.story,
-          style: data.style,
-          mood: data.mood,
-          voice: data.voice ?? null,
-          email: data.email,
-          phone: data.phone ?? null,
-        },
-        bump: data.bump,
-        utm: data.utm,
-      };
+    // 1) Confirmation email — ALWAYS for song orders, so the buyer is never
+    //    left wondering (fires no matter which delivery path runs).
+    if (product === "song" && process.env.RESEND_API_KEY && data.email) {
       try {
-        const res = await fetch(automationUrl, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
-        });
-        if (!res.ok) {
-          console.error("automation webhook returned", res.status);
-          // Non-200 → tell Stripe to retry the whole event later.
-          return NextResponse.json({ error: "Automation handoff failed" }, { status: 500 });
-        }
+        await sendConfirmationEmail({ to: data.email, theirName: data.theirName, occasion: data.occasion });
       } catch (err) {
-        console.error("automation webhook unreachable", err);
-        return NextResponse.json({ error: "Automation handoff failed" }, { status: 500 });
+        console.error("confirmation email failed", err);
       }
-    } else if (process.env.KIE_API_KEY && product === "song") {
-      // No n8n — the site generates (Kie/Suno) AND delivers (Resend).
-      // 1) instant confirmation email so the buyer isn't left wondering
-      if (process.env.RESEND_API_KEY && data.email) {
-        try {
-          await sendConfirmationEmail({ to: data.email, theirName: data.theirName });
-        } catch (err) {
-          console.error("confirmation email failed", err);
-        }
-      }
-      // 2) start the render; pack delivery details into the callback URL
-      //    so the async callback can email the finished song with no DB.
+    }
+
+    // 2) Primary delivery: the site generates (Kie/Suno) and later emails the
+    //    finished song via the callback (Resend). This is the main path.
+    let generationStarted = false;
+    if (process.env.KIE_API_KEY && product === "song") {
       try {
         const token = encodeDelivery({
           to: data.email,
@@ -130,13 +91,54 @@ export async function POST(req: NextRequest) {
           callBackUrl
         );
         if (data.orderId) await updateOrder(data.orderId, { kieTaskId: taskId });
+        generationStarted = true;
         console.log("kie generation started for order", data.orderId, "task", taskId);
       } catch (err) {
         console.error("direct kie generation failed", err);
         return NextResponse.json({ error: "Song generation failed to start" }, { status: 500 });
       }
-    } else if (product === "song") {
-      console.warn("No AUTOMATION_WEBHOOK_URL or KIE_API_KEY — order paid but not handed off:", data.orderId);
+    }
+
+    // 3) Optional handoff to n8n/automation — NON-blocking, never fails the
+    //    webhook (so a stale AUTOMATION_WEBHOOK_URL can't stop delivery).
+    const automationUrl = process.env.AUTOMATION_WEBHOOK_URL;
+    if (automationUrl) {
+      const payload = {
+        event: "purchase",
+        product,
+        orderId: data.orderId,
+        stripeSessionId: session.id,
+        amountTotal: session.amount_total,
+        currency: session.currency,
+        paidAt: new Date().toISOString(),
+        briefing: {
+          recipient: data.recipient,
+          occasion: data.occasion,
+          theirName: data.theirName,
+          yourName: data.yourName,
+          story: data.story,
+          style: data.style,
+          mood: data.mood,
+          voice: data.voice ?? null,
+          email: data.email,
+          phone: data.phone ?? null,
+        },
+        bump: data.bump,
+        utm: data.utm,
+      };
+      try {
+        await fetch(automationUrl, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+      } catch (err) {
+        console.warn("automation handoff failed (non-blocking)", err);
+      }
+    }
+
+    if (product === "song" && !generationStarted && !automationUrl) {
+      console.warn("No KIE_API_KEY or AUTOMATION_WEBHOOK_URL — paid but not handed off:", data.orderId);
     }
   }
 
