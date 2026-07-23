@@ -1,0 +1,84 @@
+import type { Briefing } from "./types";
+
+/**
+ * Kie.ai music API (Suno models). The site can generate songs directly
+ * when KIE_API_KEY is set — used as the fallback pipeline when no
+ * AUTOMATION_WEBHOOK_URL (n8n) is configured, and by /api/generate-song
+ * for testing.
+ *
+ * Endpoints:
+ *   POST https://api.kie.ai/api/v1/generate            → { taskId }
+ *   GET  https://api.kie.ai/api/v1/generate/record-info?taskId=…
+ */
+const KIE_BASE = "https://api.kie.ai/api/v1";
+
+function key(): string {
+  const k = process.env.KIE_API_KEY;
+  if (!k) throw new Error("KIE_API_KEY is not set");
+  return k;
+}
+
+/** Turn a briefing into a Suno prompt. Non-custom mode: Suno writes the lyrics from this description. */
+export function briefingToPrompt(b: Briefing): string {
+  const vocal = b.mood === "Fun" || b.mood === "Uplifting" ? "bright, joyful vocal" : "warm, heartfelt vocal";
+  return [
+    `A ${b.mood.toLowerCase()} ${b.style.toLowerCase()} song for ${b.theirName}, from ${b.yourName}.`,
+    `Occasion: ${b.occasion}. The recipient is their ${b.recipient.toLowerCase()}.`,
+    `Their story, to be woven into the lyrics with real details and names:`,
+    b.story,
+    `${vocal}, studio quality, a memorable chorus that uses the name ${b.theirName}, around 2 minutes.`,
+  ].join("\n");
+}
+
+export async function startSongGeneration(b: Briefing, callBackUrl: string): Promise<string> {
+  const res = await fetch(`${KIE_BASE}/generate`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${key()}`, "Content-Type": "application/json" },
+    body: JSON.stringify({
+      model: process.env.KIE_SUNO_MODEL ?? "V5",
+      customMode: false,
+      instrumental: false,
+      callBackUrl,
+      prompt: briefingToPrompt(b).slice(0, 3900),
+    }),
+  });
+  const json = await res.json();
+  if (json.code !== 200 || !json.data?.taskId) {
+    throw new Error(`Kie generate failed: ${json.msg ?? res.status}`);
+  }
+  return json.data.taskId as string;
+}
+
+export interface KieTrack {
+  id: string;
+  audioUrl?: string;
+  streamAudioUrl?: string;
+  imageUrl?: string;
+  title?: string;
+  duration?: number;
+}
+
+export async function getSongTask(taskId: string): Promise<{
+  status: string;
+  tracks: KieTrack[];
+}> {
+  const res = await fetch(`${KIE_BASE}/generate/record-info?taskId=${encodeURIComponent(taskId)}`, {
+    headers: { Authorization: `Bearer ${key()}` },
+    cache: "no-store",
+  });
+  const json = await res.json();
+  if (json.code !== 200) throw new Error(`Kie record-info failed: ${json.msg ?? res.status}`);
+  const data = json.data ?? {};
+  const list = data.response?.sunoData ?? [];
+  return {
+    status: data.status ?? "UNKNOWN",
+    tracks: list.map((t: Record<string, unknown>) => ({
+      id: String(t.id ?? ""),
+      audioUrl: (t.audioUrl as string) || undefined,
+      streamAudioUrl: (t.streamAudioUrl as string) || undefined,
+      imageUrl: (t.imageUrl as string) || undefined,
+      title: (t.title as string) || undefined,
+      duration: (t.duration as number) || undefined,
+    })),
+  };
+}
