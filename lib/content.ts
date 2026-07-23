@@ -121,7 +121,7 @@ export const content = {
       },
       {
         q: "What languages and styles can you do?",
-        a: "English is our home turf, and we also write in Spanish, French, German, Italian and Portuguese. Styles: Pop, Acoustic, Country, R&B and Rock — with a mood dial from tear-jerker to party-starter.",
+        a: "English is our home turf, and we also write in Spanish, French, German, Italian and Portuguese. Styles: Pop, Acoustic, Country, R&B, Rock, Hip-Hop, Latin, Indie Folk, Reggae, Gospel, Dance/EDM, Jazz, Afrobeats, Lo-fi — or describe your own. Plus a mood dial from tear-jerker to party-starter.",
       },
       {
         q: "Can I use it on Instagram or TikTok?",
@@ -290,6 +290,12 @@ export const content = {
           { value: "Hip-Hop", preview: "/audio/demo-hiphop.mp3" },
           { value: "Latin", preview: "/audio/demo-latin.mp3" },
           { value: "Indie Folk", preview: "/audio/demo-folk.mp3" },
+          { value: "Reggae", preview: "/audio/demo-reggae.mp3" },
+          { value: "Gospel", preview: "/audio/demo-gospel.mp3" },
+          { value: "Dance / EDM", preview: "/audio/demo-dance.mp3" },
+          { value: "Jazz", preview: "/audio/demo-jazz.mp3" },
+          { value: "Afrobeats", preview: "/audio/demo-afrobeats.mp3" },
+          { value: "Lo-fi", preview: "/audio/demo-lofi.mp3" },
         ],
         customStyleLabel: "Or describe your own style",
         customStylePlaceholder: "e.g. 80s synthwave, bossa nova, gospel choir…",
