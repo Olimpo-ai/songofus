@@ -11,6 +11,7 @@ export async function GET() {
     stripeWebhookSecret: !!process.env.STRIPE_WEBHOOK_SECRET,
     kieKey: !!process.env.KIE_API_KEY,
     resendKey: !!process.env.RESEND_API_KEY,
+    blobToken: !!process.env.BLOB_READ_WRITE_TOKEN, // short links + permanent songs
     emailFrom: process.env.EMAIL_FROM ?? null, // not secret
     automationWebhookUrl: !!process.env.AUTOMATION_WEBHOOK_URL, // boolean only
     siteUrl: process.env.NEXT_PUBLIC_SITE_URL ?? null,
