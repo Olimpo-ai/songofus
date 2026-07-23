@@ -48,6 +48,8 @@ export interface DeliveryData {
   theirName: string;
   yourName: string;
   style: string;
+  occasion: string;
+  recipient: string;
 }
 export function encodeDelivery(d: DeliveryData): string {
   return Buffer.from(JSON.stringify(d)).toString("base64url");

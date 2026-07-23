@@ -110,6 +110,8 @@ export async function POST(req: NextRequest) {
           theirName: data.theirName,
           yourName: data.yourName,
           style: data.style,
+          occasion: data.occasion,
+          recipient: data.recipient,
         });
         const callBackUrl = `${req.nextUrl.origin}/api/kie/callback?d=${token}`;
         const taskId = await startSongGeneration(

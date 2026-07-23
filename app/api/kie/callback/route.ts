@@ -50,6 +50,8 @@ export async function POST(req: NextRequest) {
         theirName: delivery.theirName,
         yourName: delivery.yourName,
         style: delivery.style,
+        occasion: delivery.occasion,
+        recipient: delivery.recipient,
         tracks,
       });
       console.log("song delivered to", delivery.to, "task", taskId);
