@@ -66,6 +66,20 @@ If `AUTOMATION_WEBHOOK_URL` is empty and `KIE_API_KEY` is set, the paid-order we
 - `POST /api/generate-song {orderId}` — start a generation manually (testing). `GET /api/generate-song?taskId=…` — poll status; `SUCCESS` returns track `audioUrl`s.
 - `POST /api/kie/callback` — Kie pings this when rendering finishes. It decodes the delivery token from the `?d=` param, fetches the finished tracks, and **emails the song to the buyer via Resend**.
 
+### Fulfillment without a webhook
+
+Delivery does **not** require a Stripe webhook. After payment, Stripe redirects to
+`/thanks?...&session_id=cs_...`; that page calls **`POST /api/fulfill { sessionId }`**,
+which retrieves the session server-side (Secret key), verifies `payment_status === "paid"`,
+then sends the confirmation email and starts the song. Works in test and live mode with
+only the Stripe Secret key.
+
+If a Stripe webhook *is* configured, it calls the same path (`lib/fulfill.ts` →
+`fulfillCheckoutSession`). Both are **idempotent** — a `tou_fulfilled` flag on the
+PaymentIntent metadata means a customer never gets two songs.
+
+**Recover a failed delivery:** `curl -X POST https://www.tuneofus.com/api/fulfill -H 'content-type: application/json' -d '{"sessionId":"cs_test_..."}'` — re-runs delivery for that order (skips if already fulfilled). Find the session id in Stripe → Payments → the payment → Checkout session.
+
 ### Email delivery (Resend)
 
 When the site owns generation (no `AUTOMATION_WEBHOOK_URL`), it also owns delivery:

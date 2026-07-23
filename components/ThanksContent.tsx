@@ -44,10 +44,38 @@ interface Recap {
 export default function ThanksContent() {
   const searchParams = useSearchParams();
   const orderId = searchParams.get("oid");
+  const sessionId = searchParams.get("session_id");
   const videoAdded = searchParams.get("video") === "added";
   const [recap, setRecap] = useState<Recap | null>(null);
   const [bump, setBump] = useState(false);
   const [upsellLoading, setUpsellLoading] = useState(false);
+
+  // Webhook-free fulfillment: the moment the buyer lands here after paying,
+  // tell the server to verify the payment and start the song. Guarded so a
+  // refresh doesn't re-trigger; the server is idempotent too.
+  useEffect(() => {
+    if (!sessionId) return;
+    const guard = `tou_fulfilled_${sessionId}`;
+    try {
+      if (localStorage.getItem(guard)) return;
+    } catch {}
+    fetch("/api/fulfill", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ sessionId }),
+    })
+      .then((r) => r.json())
+      .then((res) => {
+        if (res?.status && res.status !== "unpaid") {
+          try {
+            localStorage.setItem(guard, "1");
+          } catch {}
+        }
+      })
+      .catch(() => {
+        /* the Stripe webhook, if configured, is the backstop */
+      });
+  }, [sessionId]);
 
   useEffect(() => {
     track("PurchaseClient", { order_id: orderId ?? "unknown" });
