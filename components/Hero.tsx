@@ -47,10 +47,6 @@ export default function Hero() {
           {content.hero.h1}
         </h1>
 
-        <p className="mx-auto mt-3 max-w-md text-[16px] leading-relaxed text-ink-soft sm:max-w-lg sm:text-[17px]">
-          {content.hero.sub}
-        </p>
-
         <div className="mt-5 flex flex-col items-center gap-3">
           {config.showUrgency && (
             <span className="rounded-full bg-blush px-3 py-1 text-xs font-bold text-burgundy-deep">

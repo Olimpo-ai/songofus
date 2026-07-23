@@ -50,9 +50,32 @@ export default function ThanksContent() {
   const [upsellLoading, setUpsellLoading] = useState(false);
 
   useEffect(() => {
-    // client-side confirmation ping; authoritative Purchase fires server-side via webhook
     track("PurchaseClient", { order_id: orderId ?? "unknown" });
     if (!orderId) return;
+
+    // Meta Pixel Purchase — once per order, guarded via localStorage
+    try {
+      const guard = `tuneofus_purchased_${orderId}`;
+      if (!localStorage.getItem(guard) && typeof window.fbq === "function") {
+        const local = JSON.parse(localStorage.getItem("tuneofus_order") || "null");
+        const withBump = !!local?.bump;
+        window.fbq("track", "Purchase", {
+          value: config.price.core + (withBump ? config.price.bump : 0),
+          currency: "USD",
+        });
+        localStorage.setItem(guard, "1");
+      }
+    } catch {}
+
+    // Recap: localStorage first, server fallback
+    try {
+      const local = JSON.parse(localStorage.getItem("tuneofus_order") || "null");
+      if (local?.orderId === orderId && local.briefing) {
+        setRecap(local.briefing);
+        setBump(!!local.bump);
+        return;
+      }
+    } catch {}
     fetch(`/api/briefing?id=${orderId}`)
       .then((r) => (r.ok ? r.json() : Promise.reject()))
       .then((data) => {
@@ -67,10 +90,14 @@ export default function ThanksContent() {
     setUpsellLoading(true);
     track("UpsellClick", { order_id: orderId });
     try {
+      let local = null;
+      try {
+        local = JSON.parse(localStorage.getItem("tuneofus_order") || "null");
+      } catch {}
       const res = await fetch("/api/checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ orderId, product: "video" }),
+        body: JSON.stringify({ orderId, product: "video", briefing: local?.briefing, utm: local?.utm }),
       });
       const data = await res.json();
       if (data.url) window.location.href = data.url;

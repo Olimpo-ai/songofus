@@ -13,9 +13,14 @@ import { config } from "@/lib/config";
  */
 export async function POST(req: NextRequest) {
   try {
-    const { orderId, bump, product } = await req.json();
-    const order = await getOrder(orderId);
-    if (!order) {
+    const body = await req.json();
+    const { orderId, bump, product } = body;
+    // Store lookup is best-effort (serverless FS is ephemeral) — the
+    // client sends its own copy of the briefing as the source of truth.
+    const order = await getOrder(orderId).catch(() => null);
+    const briefing = order?.briefing ?? body.briefing;
+    const utm = order?.utm ?? body.utm ?? {};
+    if (!briefing?.email || !briefing?.recipient) {
       return NextResponse.json({ error: "We couldn't find your song draft. Please fill the form again." }, { status: 404 });
     }
 
@@ -43,7 +48,7 @@ export async function POST(req: NextRequest) {
           currency: config.currency,
           product_data: {
             name: "Personalized Song",
-            description: `A studio-quality song about ${order.briefing.theirName || "them"}, delivered in 1 hour.`,
+            description: `A studio-quality song about ${briefing.theirName || "them"}, delivered in 1 hour.`,
           },
           unit_amount: config.price.coreCents,
         },
@@ -68,13 +73,13 @@ export async function POST(req: NextRequest) {
     const session = await stripe.checkout.sessions.create({
       mode: "payment",
       line_items: lineItems,
-      customer_email: order.briefing.email,
+      customer_email: briefing.email,
       success_url: isUpsell
         ? `${origin}/thanks?oid=${orderId}&video=added`
         : `${origin}/thanks?oid=${orderId}&session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: isUpsell ? `${origin}/thanks?oid=${orderId}` : `${origin}/review?oid=${orderId}`,
       metadata: {
-        ...briefingToMetadata(orderId, order.briefing, order.utm, !!bump),
+        ...briefingToMetadata(orderId, briefing, utm, !!bump),
         product: isUpsell ? "video" : "song",
       },
       payment_intent_data: {

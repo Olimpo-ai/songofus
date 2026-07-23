@@ -12,7 +12,7 @@ const STORAGE_KEY = "tuneofus_draft";
 const MODAL_SEEN_KEY = "tuneofus_finish_modal_seen";
 const f = content.form;
 
-type Draft = Partial<Briefing> & { step?: number };
+type Draft = Partial<Briefing> & { step?: number; customStyle?: string };
 
 const STEP_NAMES = ["recipient", "occasion", "names", "story", "vibe", "delivery"] as const;
 const TOTAL_STEPS = STEP_NAMES.length;
@@ -202,7 +202,7 @@ export default function Wizard() {
       case 1: return !!draft.occasion;
       case 2: return !!draft.theirName?.trim() && !!draft.yourName?.trim();
       case 3: return !!draft.story?.trim();
-      case 4: return !!draft.style && !!draft.mood;
+      case 4: return (!!draft.style || !!draft.customStyle?.trim()) && !!draft.mood;
       case 5: return !!draft.email && /.+@.+\..+/.test(draft.email);
       default: return false;
     }
@@ -223,30 +223,39 @@ export default function Wizard() {
     setSubmitting(true);
     setError(null);
     events.completeStep(6, "delivery");
+    const briefing: Briefing = {
+      recipient: draft.recipient!,
+      occasion: draft.occasion!,
+      theirName: draft.theirName!.trim(),
+      yourName: draft.yourName!.trim(),
+      story: draft.story!.trim(),
+      style: (draft.customStyle?.trim() || draft.style)!,
+      mood: draft.mood!,
+      email: draft.email!.trim(),
+      phone: draft.phone?.trim() || undefined,
+    };
+    const utm = getUtm();
+    // Server save is best-effort (serverless storage is ephemeral).
+    // The briefing always travels with the client, so a failed save
+    // never blocks the order.
+    let orderId = crypto.randomUUID();
     try {
-      const briefing: Briefing = {
-        recipient: draft.recipient!,
-        occasion: draft.occasion!,
-        theirName: draft.theirName!.trim(),
-        yourName: draft.yourName!.trim(),
-        story: draft.story!.trim(),
-        style: draft.style!,
-        mood: draft.mood!,
-        email: draft.email!.trim(),
-        phone: draft.phone?.trim() || undefined,
-      };
       const res = await fetch("/api/briefing", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ briefing, utm: getUtm() }),
+        body: JSON.stringify({ briefing, utm }),
       });
-      if (!res.ok) throw new Error("save failed");
-      const { orderId } = await res.json();
-      router.push(`/review?oid=${orderId}`);
+      if (res.ok) {
+        const data = await res.json();
+        if (data.orderId) orderId = data.orderId;
+      }
     } catch {
-      setError("Couldn't save your answers — check your connection and try again.");
-      setSubmitting(false);
+      /* offline save — the localStorage copy below carries the order */
     }
+    try {
+      localStorage.setItem("tuneofus_order", JSON.stringify({ orderId, briefing, utm }));
+    } catch {}
+    router.push(`/review?oid=${orderId}`);
   };
 
   if (!hydrated) {
@@ -374,13 +383,13 @@ export default function Wizard() {
                 <button
                   key={s.value}
                   type="button"
-                  aria-pressed={draft.style === s.value}
+                  aria-pressed={draft.style === s.value && !draft.customStyle?.trim()}
                   onClick={() => {
-                    update({ style: s.value });
+                    update({ style: s.value, customStyle: "" });
                     playPreview(s.preview);
                   }}
                   className={`flex items-center justify-between rounded-2xl border-2 px-4 py-3.5 text-[15px] font-semibold transition-colors ${
-                    draft.style === s.value
+                    draft.style === s.value && !draft.customStyle?.trim()
                       ? "border-burgundy bg-blush-soft text-burgundy-deep"
                       : "border-burgundy/15 bg-linen-warm text-ink hover:border-burgundy/40"
                   }`}
@@ -392,6 +401,16 @@ export default function Wizard() {
                 </button>
               ))}
             </div>
+            <label className="mt-3 block">
+              <span className="text-sm font-medium text-ink-soft">{f.steps.vibe.customStyleLabel}</span>
+              <input
+                type="text"
+                value={draft.customStyle ?? ""}
+                onChange={(e) => update({ customStyle: e.target.value })}
+                placeholder={f.steps.vibe.customStylePlaceholder}
+                className="mt-1.5 w-full rounded-xl border-2 border-burgundy/20 bg-linen-warm px-4 py-3 text-[15px] text-ink placeholder:text-ink-soft/50 focus:border-burgundy focus:outline-none"
+              />
+            </label>
             <p className="mt-5 text-sm font-bold text-ink">{f.steps.vibe.moodLabel}</p>
             <div className="mt-2 grid grid-cols-2 gap-2.5">
               {f.steps.vibe.moods.map((m) => (

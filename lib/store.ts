@@ -1,5 +1,6 @@
 import { promises as fs } from "fs";
 import path from "path";
+import os from "os";
 import crypto from "crypto";
 import type { Order, Briefing } from "./types";
 import type { UtmData } from "./utm";
@@ -19,7 +20,13 @@ import type { UtmData } from "./utm";
  *      functions below, nothing else changes.
  *   3. Add a delivered/failed status column + admin list view.
  */
-const DATA_DIR = path.join(process.cwd(), "data");
+// Vercel's filesystem is read-only except os.tmpdir() — write there in
+// prod (ephemeral per-instance, best-effort only). The funnel never
+// depends on this store: the briefing travels with the client and inside
+// Stripe metadata.
+const DATA_DIR = process.env.VERCEL
+  ? path.join(os.tmpdir(), "tuneofus-data")
+  : path.join(process.cwd(), "data");
 const ORDERS_FILE = path.join(DATA_DIR, "orders.json");
 
 async function readAll(): Promise<Order[]> {
@@ -46,9 +53,13 @@ export async function createOrder(briefing: Briefing, utm: UtmData): Promise<Ord
     bump: false,
     upsell: false,
   };
-  const orders = await readAll();
-  orders.push(order);
-  await writeAll(orders);
+  try {
+    const orders = await readAll();
+    orders.push(order);
+    await writeAll(orders);
+  } catch (err) {
+    console.warn("order store write skipped:", err);
+  }
   return order;
 }
 
@@ -58,10 +69,15 @@ export async function getOrder(id: string): Promise<Order | null> {
 }
 
 export async function updateOrder(id: string, patch: Partial<Order>): Promise<Order | null> {
-  const orders = await readAll();
-  const idx = orders.findIndex((o) => o.id === id);
-  if (idx === -1) return null;
-  orders[idx] = { ...orders[idx], ...patch };
-  await writeAll(orders);
-  return orders[idx];
+  try {
+    const orders = await readAll();
+    const idx = orders.findIndex((o) => o.id === id);
+    if (idx === -1) return null;
+    orders[idx] = { ...orders[idx], ...patch };
+    await writeAll(orders);
+    return orders[idx];
+  } catch (err) {
+    console.warn("order store update skipped:", err);
+    return null;
+  }
 }

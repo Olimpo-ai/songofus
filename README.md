@@ -66,7 +66,22 @@ If `AUTOMATION_WEBHOOK_URL` is empty and `KIE_API_KEY` is set, the paid-order we
 - `POST /api/generate-song {orderId}` — start a generation manually (testing). `GET /api/generate-song?taskId=…` — poll status; `SUCCESS` returns track `audioUrl`s.
 - `POST /api/kie/callback` — Kie pings this when rendering finishes; extend it to email/SMS the customer, or keep delivery in n8n.
 
-Verified end-to-end: a real test order generated "Charger at the Cafe" (two takes) via the live API; the hero demo MP3s in `public/audio/` are those takes. Replace them with your curated demos before launch, and generate style-true samples for the Pop/Country tabs (all three currently carry the acoustic test takes).
+Verified end-to-end via the live API. All eight style previews in `public/audio/` are real Suno-generated songs, each written to its genre:
+
+| File | Style | Story |
+|---|---|---|
+| `demo-pop.mp3` | Pop | Emma's 30th birthday |
+| `demo-acoustic.mp3` | Acoustic | "Charger at the Cafe" (Lisbon) |
+| `demo-country.mp3` | Country | Katie's dad, the red pickup |
+| `demo-rnb.mp3` | R&B | Marcus & Alicia anniversary |
+| `demo-rock.mp3` | Rock | Jake & Danny's garage band |
+| `demo-hiphop.mp3` | Hip-Hop | Chris's tribute to mom Denise |
+| `demo-latin.mp3` | Latin | Diego & Sofia in Barcelona |
+| `demo-folk.mp3` | Indie Folk | Hannah's sister Beth's wedding |
+
+The vibe step also has a free-text "describe your own style" field — when filled, it overrides the chip selection and passes straight into the Suno prompt.
+
+⚠️ **The Kie API key rotates.** If generation returns `401`, mint a fresh key in your Kie dashboard and update `KIE_API_KEY` (locally in `.env.local`, in prod on Vercel).
 
 ### Automation payload (what your n8n receives)
 
@@ -100,7 +115,7 @@ On Vercel, the filesystem is ephemeral — the webhook works anyway because it r
 
 Client events push to `window.dataLayer` (GTM) and Meta Pixel if `fbq` is present: `ViewContent`, `StartForm`, `CompleteStep(n)`, `InitiateCheckout`. The authoritative **Purchase** signal is server-side — your n8n receives it from the webhook and can forward to Meta CAPI. UTM params are captured on landing (first touch), persisted through the form, and attached to Stripe metadata, so revenue is attributable per ad creative.
 
-Add your GTM/Pixel snippets to `app/layout.tsx` when you have the IDs.
+**Meta Pixel is installed** in `app/layout.tsx` (base code + PageView). The ID defaults to `1050133137708301` and can be overridden with `NEXT_PUBLIC_META_PIXEL_ID`. Standard events fire automatically: `StartForm` / `CompleteStep` / `InitiateCheckout` via `lib/analytics.ts`, and **`Purchase`** on the `/thanks` page (deduplicated per order via localStorage, with the real order value + bump). For server-side accuracy, also wire Meta CAPI from the Stripe webhook — that Purchase is the authoritative one.
 
 ## Stripe: test → live checklist
 

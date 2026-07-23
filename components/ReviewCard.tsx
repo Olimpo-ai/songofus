@@ -16,6 +16,19 @@ interface RecapBriefing {
   mood: string;
 }
 
+/** The full order saved by the wizard — survives serverless storage loss. */
+function loadLocalOrder(oid: string | null) {
+  try {
+    const raw = localStorage.getItem("tuneofus_order");
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (oid && parsed.orderId !== oid) return null;
+    return parsed as { orderId: string; briefing: RecapBriefing & { story: string; email: string; phone?: string }; utm: Record<string, string> };
+  } catch {
+    return null;
+  }
+}
+
 export default function ReviewCard() {
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -28,6 +41,13 @@ export default function ReviewCard() {
   useEffect(() => {
     if (!orderId) {
       router.replace("/create");
+      return;
+    }
+    // localStorage first (always present right after the wizard);
+    // server copy is only a fallback for cross-device links.
+    const local = loadLocalOrder(orderId);
+    if (local) {
+      setBriefing(local.briefing);
       return;
     }
     fetch(`/api/briefing?id=${orderId}`)
@@ -44,10 +64,21 @@ export default function ReviewCard() {
     setError(null);
     events.initiateCheckout(total);
     try {
+      const local = loadLocalOrder(orderId);
+      // remember the bump choice so /thanks reports the right Purchase value
+      try {
+        if (local) localStorage.setItem("tuneofus_order", JSON.stringify({ ...local, bump }));
+      } catch {}
       const res = await fetch("/api/checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ orderId, bump, product: "song" }),
+        body: JSON.stringify({
+          orderId,
+          bump,
+          product: "song",
+          briefing: local?.briefing,
+          utm: local?.utm,
+        }),
       });
       const data = await res.json();
       if (!res.ok || !data.url) throw new Error(data.error);
