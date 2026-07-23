@@ -20,9 +20,24 @@ function getResend(): Resend {
   return _resend;
 }
 
-const FROM = process.env.EMAIL_FROM ?? "TuneOfUs <onboarding@resend.dev>";
-const REPLY_TO = "hello@tuneofus.com";
 const SITE = process.env.NEXT_PUBLIC_SITE_URL ?? "https://tuneofus.com";
+const REPLY_TO = "hello@tuneofus.com";
+
+/**
+ * Sender address. Prefer EMAIL_FROM; otherwise derive hello@<domain> from
+ * the site URL. NEVER fall back to onboarding@resend.dev in production —
+ * Resend only lets that address email the account owner, so real customers
+ * would silently get nothing (403).
+ */
+function defaultFrom(): string {
+  try {
+    const host = new URL(SITE).hostname.replace(/^www\./, "");
+    return `TuneOfUs <hello@${host}>`;
+  } catch {
+    return "TuneOfUs <hello@tuneofus.com>";
+  }
+}
+const FROM = process.env.EMAIL_FROM ?? defaultFrom();
 
 const BURGUNDY = "#8a0f33";
 const DEEP = "#3c0416";
