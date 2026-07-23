@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getStripe, metadataToBriefing } from "@/lib/stripe";
 import { updateOrder } from "@/lib/store";
-import { startSongGeneration } from "@/lib/kie";
+import { startSongGeneration, encodeDelivery } from "@/lib/kie";
+import { sendConfirmationEmail } from "@/lib/email";
 
 /**
  * Stripe → checkout.session.completed → mark order paid → hand off the
@@ -92,11 +93,25 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: "Automation handoff failed" }, { status: 500 });
       }
     } else if (process.env.KIE_API_KEY && product === "song") {
-      // No n8n configured — generate directly via Kie (Suno).
-      // Delivery email/SMS still needs your automation; the callback
-      // route logs the finished track URLs.
+      // No n8n — the site generates (Kie/Suno) AND delivers (Resend).
+      // 1) instant confirmation email so the buyer isn't left wondering
+      if (process.env.RESEND_API_KEY && data.email) {
+        try {
+          await sendConfirmationEmail({ to: data.email, theirName: data.theirName });
+        } catch (err) {
+          console.error("confirmation email failed", err);
+        }
+      }
+      // 2) start the render; pack delivery details into the callback URL
+      //    so the async callback can email the finished song with no DB.
       try {
-        const callBackUrl = `${req.nextUrl.origin}/api/kie/callback`;
+        const token = encodeDelivery({
+          to: data.email,
+          theirName: data.theirName,
+          yourName: data.yourName,
+          style: data.style,
+        });
+        const callBackUrl = `${req.nextUrl.origin}/api/kie/callback?d=${token}`;
         const taskId = await startSongGeneration(
           {
             recipient: data.recipient,
@@ -118,7 +133,7 @@ export async function POST(req: NextRequest) {
         console.error("direct kie generation failed", err);
         return NextResponse.json({ error: "Song generation failed to start" }, { status: 500 });
       }
-    } else {
+    } else if (product === "song") {
       console.warn("No AUTOMATION_WEBHOOK_URL or KIE_API_KEY — order paid but not handed off:", data.orderId);
     }
   }

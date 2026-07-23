@@ -37,6 +37,30 @@ export function briefingToPrompt(b: Briefing): string {
   ].join("\n");
 }
 
+/**
+ * The song render is async and the Kie callback arrives on a fresh
+ * serverless instance with no memory of the order. So we pack the
+ * delivery details into the callback URL itself (base64url) and read
+ * them back when Kie calls us. No database required.
+ */
+export interface DeliveryData {
+  to: string;
+  theirName: string;
+  yourName: string;
+  style: string;
+}
+export function encodeDelivery(d: DeliveryData): string {
+  return Buffer.from(JSON.stringify(d)).toString("base64url");
+}
+export function decodeDelivery(s: string | null): DeliveryData | null {
+  if (!s) return null;
+  try {
+    return JSON.parse(Buffer.from(s, "base64url").toString("utf8")) as DeliveryData;
+  } catch {
+    return null;
+  }
+}
+
 export async function startSongGeneration(b: Briefing, callBackUrl: string): Promise<string> {
   const res = await fetch(`${KIE_BASE}/generate`, {
     method: "POST",

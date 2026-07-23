@@ -64,7 +64,22 @@ If `AUTOMATION_WEBHOOK_URL` is empty and `KIE_API_KEY` is set, the paid-order we
 
 - `lib/kie.ts` — builds a Suno prompt from the briefing, calls `POST api.kie.ai/api/v1/generate` (model from `KIE_SUNO_MODEL`, default V5), polls `GET …/generate/record-info?taskId=`.
 - `POST /api/generate-song {orderId}` — start a generation manually (testing). `GET /api/generate-song?taskId=…` — poll status; `SUCCESS` returns track `audioUrl`s.
-- `POST /api/kie/callback` — Kie pings this when rendering finishes; extend it to email/SMS the customer, or keep delivery in n8n.
+- `POST /api/kie/callback` — Kie pings this when rendering finishes. It decodes the delivery token from the `?d=` param, fetches the finished tracks, and **emails the song to the buyer via Resend**.
+
+### Email delivery (Resend)
+
+When the site owns generation (no `AUTOMATION_WEBHOOK_URL`), it also owns delivery:
+
+1. **On payment** (`checkout.session.completed`) → instant confirmation email: "We're writing [name]'s song right now."
+2. **When the render completes** → the Kie callback emails the finished song (both versions) with listen/download links.
+
+Because the render is async and serverless has no shared memory, the buyer's email + names are packed into the callback URL as a base64url token (`lib/kie.ts` `encodeDelivery`) — **no database needed**. Emails are built in `lib/email.ts` (branded, inline-styled).
+
+⚠️ **Verify your domain first.** Resend only sends from a verified domain. Until you verify `tuneofus.com` at [resend.com/domains](https://resend.com/domains) and set `EMAIL_FROM="TuneOfUs <hello@tuneofus.com>"`, delivery only reaches the Resend account owner's inbox. This is the #1 launch blocker for delivery.
+
+Set `RESEND_API_KEY` + `EMAIL_FROM` in Vercel. Verified end-to-end locally: a completion callback delivered a real Suno track by email.
+
+_Note: if Kie fires the completion callback more than once, the buyer could get a duplicate song email (no durable dedup without a DB). Rare; acceptable for MVP. Add a KV/Postgres `delivered` flag to harden._
 
 Verified end-to-end via the live API. All eight style previews in `public/audio/` are real Suno-generated songs, each written to its genre:
 
