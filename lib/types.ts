@@ -8,6 +8,7 @@ export interface Briefing {
   story: string;
   style: string;
   mood: string;
+  voice?: string;
   email: string;
   phone?: string;
 }

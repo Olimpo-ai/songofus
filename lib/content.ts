@@ -69,15 +69,17 @@ export const content = {
 
   occasions: {
     heading: "Whatever the occasion, there's a song in it",
+    // Landing "doors" — each deep-links into the wizard, pre-filling the
+    // recipient and/or occasion so cold traffic starts already personalized.
     items: [
-      { slug: "anniversary", label: "Anniversary" },
-      { slug: "for-mum", label: "For Mum" },
-      { slug: "for-dad", label: "For Dad" },
-      { slug: "wedding", label: "Wedding" },
-      { slug: "birthday", label: "Birthday" },
-      { slug: "new-baby", label: "New baby" },
-      { slug: "for-your-person", label: "For your person" },
-      { slug: "just-because", label: "Just because" },
+      { slug: "anniversary", label: "Anniversary", query: "recipient=Partner&occasion=Anniversary" },
+      { slug: "for-mum", label: "For Mum", query: "recipient=Mum" },
+      { slug: "for-dad", label: "For Dad", query: "recipient=Dad" },
+      { slug: "wedding", label: "Wedding", query: "recipient=Partner&occasion=Wedding" },
+      { slug: "birthday", label: "Birthday", query: "occasion=Birthday" },
+      { slug: "new-baby", label: "New baby", query: "recipient=Child&occasion=New baby" },
+      { slug: "for-your-person", label: "For your person", query: "recipient=Partner" },
+      { slug: "just-because", label: "Just because", query: "occasion=Just because" },
     ],
   },
 
@@ -138,44 +140,146 @@ export const content = {
 
   form: {
     progressLabel: "Your song",
+    // Affirmation shown under the progress bar — increases emotional
+    // investment one step at a time (Airbnb/Apple-style). {name} fills in
+    // once we know the recipient's name.
+    reinforce: [
+      "Let's make something they'll never forget.",
+      "Beautiful choice. This is going to be special.",
+      "Now it's starting to feel personal.",
+      "This is the part that makes them cry.",
+      "Almost there — let's set the mood.",
+      "One last step and their song is on its way.",
+    ],
     steps: {
       recipient: {
         question: "Who is this song for?",
+        subtitle: "We'll shape every question around them.",
         options: [
           { value: "Partner" },
           { value: "Mum" },
           { value: "Dad" },
-          { value: "Friend" },
           { value: "Child" },
+          { value: "Friend" },
           { value: "Pet" },
           { value: "Someone we miss" },
-          { value: "Other" },
+          { value: "Someone else" },
         ],
       },
       occasion: {
-        question: "What's the occasion?",
+        question: "What's the moment?",
+        subtitle: "Pick the one that fits best.",
+        // Adaptive per recipient — no more mixing "For Mum" with occasions.
+        byRecipient: {
+          Partner: ["Anniversary", "Valentine's Day", "Proposal", "Wedding / first dance", "Birthday", "Just because"],
+          Mum: ["Mother's Day", "Birthday", "A big thank you", "Just because"],
+          Dad: ["Father's Day", "Birthday", "A big thank you", "Just because"],
+          Child: ["Birthday", "New baby", "Graduation", "Just because"],
+          Friend: ["Birthday", "Wedding", "Graduation", "A big thank you", "Just because"],
+          Pet: ["Birthday", "Gotcha day", "In loving memory", "Just because"],
+          "Someone we miss": ["In loving memory", "Celebration of life", "Their birthday", "An anniversary"],
+          "Someone else": ["Birthday", "Anniversary", "Wedding", "Graduation", "A big thank you", "Just because"],
+        } as Record<string, string[]>,
+        default: ["Birthday", "Anniversary", "Wedding", "Graduation", "A big thank you", "Just because"],
       },
       names: {
-        question: "Who's in this story?",
+        question: "Let's get the names right",
+        subtitle: "Exactly as they'll be sung.",
         theirName: "Their name",
         theirPlaceholder: "e.g. Maria",
-        yourName: "Your name(s)",
+        yourName: "From (your name)",
         yourPlaceholder: "e.g. Alex — or Alex & the kids",
       },
       story: {
-        question: "Tell us your story",
-        hint: "The more real details, the more it hits. Names, places, tiny moments.",
-        placeholders: [
-          "How did you meet? What's a moment only you two laugh about?",
-          "What would you say if you had one song to say it?",
-          "What's the little thing they do that you'd miss most?",
-          "Describe the day you knew they were your person.",
-        ],
+        // Adaptive title/placeholder/tone per recipient. {name} interpolated.
+        byRecipient: {
+          Partner: {
+            question: "Tell us your love story",
+            hint: "The little details are what make {name} cry — names, places, inside jokes.",
+            placeholders: [
+              "How did you and {name} meet?",
+              "What's a moment only the two of you laugh about?",
+              "What would you say if you had one song to say it?",
+              "The day you knew {name} was the one…",
+            ],
+          },
+          Mum: {
+            question: "Tell us about your mum",
+            hint: "What makes {name} one of a kind? The more real, the better.",
+            placeholders: [
+              "What makes {name} so special?",
+              "A moment with {name} you'll never forget…",
+              "Something she always says or does…",
+              "What do you most want her to know?",
+            ],
+          },
+          Dad: {
+            question: "Tell us about your dad",
+            hint: "What makes {name} one of a kind? The more real, the better.",
+            placeholders: [
+              "What makes {name} so special?",
+              "A moment with {name} you'll never forget…",
+              "Something he always says or does…",
+              "What do you most want him to know?",
+            ],
+          },
+          Child: {
+            question: "Tell us about {name}",
+            hint: "The tiny details are the magic — what do you love most?",
+            placeholders: [
+              "What makes {name} light up the room?",
+              "A moment you never want to forget…",
+              "Their funny little habits and favorite things…",
+              "What do you hope {name} always remembers?",
+            ],
+          },
+          Friend: {
+            question: "Tell us about your friendship",
+            hint: "The inside jokes and the ride-or-die moments — give us the good stuff.",
+            placeholders: [
+              "How did you and {name} become inseparable?",
+              "The story you two always end up retelling…",
+              "An inside joke no one else would get…",
+              "What does {name} mean to you?",
+            ],
+          },
+          Pet: {
+            question: "Tell us about {name}",
+            hint: "The zoomies, the habits, the love — paint the picture.",
+            placeholders: [
+              "How did {name} come into your life?",
+              "Their funniest, most {name} thing to do…",
+              "The way they greet you at the door…",
+              "What makes {name} the best?",
+            ],
+          },
+          "Someone we miss": {
+            question: "Share the memories you'd love this song to hold",
+            hint: "Take your time. Whatever you share, we'll hold it gently.",
+            placeholders: [
+              "A moment with {name} you never want to forget…",
+              "The way {name} made people feel…",
+              "Something {name} always said or did…",
+              "What you'd give anything to tell them now…",
+            ],
+          },
+        } as Record<string, { question: string; hint: string; placeholders: string[] }>,
+        default: {
+          question: "Tell us your story",
+          hint: "The more real the details, the more the song hits. Names, places, tiny moments.",
+          placeholders: [
+            "How did you two meet, or what's your history?",
+            "A moment together you'll never forget…",
+            "An inside joke or a habit that's so them…",
+            "What do you most want them to know?",
+          ],
+        },
         nudge: "A little more detail makes the song 10x more personal — one more memory?",
         minChars: 100,
       },
       vibe: {
-        question: "Pick the vibe",
+        question: "Now, the sound",
+        subtitle: "Tap a style to hear a real example.",
         styleLabel: "Style",
         styles: [
           { value: "Pop", preview: "/audio/demo-pop.mp3" },
@@ -191,22 +295,26 @@ export const content = {
         customStylePlaceholder: "e.g. 80s synthwave, bossa nova, gospel choir…",
         moodLabel: "Mood",
         moods: ["Romantic", "Fun", "Emotional", "Uplifting"],
+        voiceLabel: "Singer",
+        voices: ["Female", "Male", "Duet", "Surprise me"],
       },
       delivery: {
-        question: "Where do we send it?",
+        question: "Where should we send it?",
+        subtitle: "Your song lands here within the hour.",
         emailLabel: "Your email",
         emailPlaceholder: "you@example.com",
         phoneLabel: "Phone (optional)",
         phonePlaceholder: "+1 555 000 0000",
         phoneHint: "so you don't miss the 1-hour delivery",
+        reassurance: "1-hour delivery · Love-it guarantee or your money back · 4.9★ from 1,200+ orders",
       },
     },
     next: "Next",
     back: "Back",
-    submit: "Review my order →",
+    submit: "See my song's summary →",
     saveExitModal: {
-      title: "Your song is 60% ready to order",
-      body: "Your answers are saved. Finish in 1 minute?",
+      title: "Your song is almost ready to order",
+      body: "Your answers are saved. Finish in under a minute?",
       cta: "Finish my song",
       dismiss: "Maybe later",
     },

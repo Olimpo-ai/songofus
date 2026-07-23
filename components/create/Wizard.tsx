@@ -25,11 +25,31 @@ function loadDraft(): Draft {
   }
 }
 
+/** Fill {name} in adaptive copy; falls back to "them" when unknown. */
+function interp(str: string, name?: string): string {
+  return str.replace(/\{name\}/g, name?.trim() || "them");
+}
+
+/** Occasions adapt to the chosen recipient (no more mixing concepts). */
+function occasionOptions(recipient?: string): string[] {
+  if (recipient && f.steps.occasion.byRecipient[recipient]) {
+    return f.steps.occasion.byRecipient[recipient];
+  }
+  return f.steps.occasion.default;
+}
+
+/** Story title, hint and rotating prompts adapt to the recipient + tone. */
+function storyConfig(recipient?: string) {
+  if (recipient && f.steps.story.byRecipient[recipient]) {
+    return f.steps.story.byRecipient[recipient];
+  }
+  return f.steps.story.default;
+}
+
 /** Progress bar styled as a filling soundwave. */
 function SoundwaveProgress({ step }: { step: number }) {
   const bars = 28;
   const filled = Math.round(((step + 1) / TOTAL_STEPS) * bars);
-  // deterministic pseudo-random heights so SSR/CSR match
   const heights = Array.from({ length: bars }, (_, i) => 8 + ((i * 37) % 17));
   return (
     <div
@@ -58,7 +78,7 @@ function ChipGrid({
   value,
   onPick,
 }: {
-  options: { value: string }[];
+  options: string[];
   value?: string;
   onPick: (v: string) => void;
 }) {
@@ -66,17 +86,48 @@ function ChipGrid({
     <div className="grid grid-cols-2 gap-2.5">
       {options.map((o) => (
         <button
-          key={o.value}
+          key={o}
           type="button"
-          onClick={() => onPick(o.value)}
-          aria-pressed={value === o.value}
+          onClick={() => onPick(o)}
+          aria-pressed={value === o}
           className={`rounded-2xl border-2 px-4 py-4 text-left text-[15px] font-semibold transition-colors ${
-            value === o.value
+            value === o
               ? "border-burgundy bg-blush-soft text-burgundy-deep"
               : "border-burgundy/15 bg-linen-warm text-ink hover:border-burgundy/40"
           }`}
         >
-          {o.value}
+          {o}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+/** Small, secondary pill group (mood, singer) — one tap, low friction. */
+function PillGroup({
+  options,
+  value,
+  onPick,
+}: {
+  options: string[];
+  value?: string;
+  onPick: (v: string) => void;
+}) {
+  return (
+    <div className="mt-2 flex flex-wrap gap-2">
+      {options.map((o) => (
+        <button
+          key={o}
+          type="button"
+          aria-pressed={value === o}
+          onClick={() => onPick(o)}
+          className={`rounded-full border-2 px-4 py-2.5 text-[14px] font-semibold transition-colors ${
+            value === o
+              ? "border-burgundy bg-blush-soft text-burgundy-deep"
+              : "border-burgundy/15 bg-linen-warm text-ink hover:border-burgundy/40"
+          }`}
+        >
+          {o}
         </button>
       ))}
     </div>
@@ -97,22 +148,35 @@ export default function Wizard() {
   const previewRef = useRef<HTMLAudioElement>(null);
   const idleTimer = useRef<ReturnType<typeof setTimeout>>();
 
-  // Hydrate: resume draft + occasion query param prefill
+  // Hydrate: resume a saved draft, else honor deep-link params from the
+  // landing occasion cards (recipient / occasion) and skip ahead.
   useEffect(() => {
     const saved = loadDraft();
-    const occasionParam = searchParams.get("occasion");
-    if (occasionParam) saved.occasion = occasionParam;
+    const rParam = searchParams.get("recipient");
+    const oParam = searchParams.get("occasion");
+    const resuming = typeof saved.step === "number" && saved.step > 0;
+
+    if (!resuming) {
+      if (rParam) saved.recipient = rParam;
+      if (oParam) saved.occasion = oParam;
+      // start where the deep-link leaves off
+      let start = 0;
+      if (rParam && oParam) start = 2;
+      else if (rParam) start = 1;
+      else if (oParam) start = 1;
+      setStep(start);
+    } else if (saved.step! < TOTAL_STEPS) {
+      setStep(saved.step!);
+    }
+
     setDraft(saved);
-    if (saved.step && saved.step > 0 && saved.step < TOTAL_STEPS) setStep(saved.step);
     setHydrated(true);
     events.startForm();
   }, [searchParams]);
 
-  // Auto-save every change
-  const save = useCallback((next: Draft, nextStep?: number) => {
-    const toStore = { ...next, step: nextStep ?? next.step };
+  const save = useCallback((next: Draft) => {
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(toStore));
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
     } catch {}
   }, []);
 
@@ -124,17 +188,20 @@ export default function Wizard() {
     });
   };
 
-  // Rotating story placeholders
+  const storyCfg = storyConfig(draft.recipient);
+
+  // Rotating, recipient-aware story placeholders
   useEffect(() => {
     if (step !== 3) return;
+    setPlaceholderIdx(0);
     const t = setInterval(
-      () => setPlaceholderIdx((i) => (i + 1) % f.steps.story.placeholders.length),
+      () => setPlaceholderIdx((i) => (i + 1) % storyCfg.placeholders.length),
       4000
     );
     return () => clearInterval(t);
-  }, [step]);
+  }, [step, storyCfg.placeholders.length]);
 
-  // Finish-later modal: after step 3, 45s idle (mobile) or exit-intent (desktop), once ever
+  // Finish-later modal: after step 3, once ever
   useEffect(() => {
     if (step < 3 || showModal) return;
     if (localStorage.getItem(MODAL_SEEN_KEY)) return;
@@ -169,7 +236,6 @@ export default function Wizard() {
   const goTo = (n: number) => {
     events.completeStep(step + 1, STEP_NAMES[step]);
     setStep(n);
-    // persist via functional update — never a stale closure of draft
     setDraft((d) => {
       const nd = { ...d, step: n };
       save(nd);
@@ -231,13 +297,11 @@ export default function Wizard() {
       story: draft.story!.trim(),
       style: (draft.customStyle?.trim() || draft.style)!,
       mood: draft.mood!,
+      voice: draft.voice || "Surprise me",
       email: draft.email!.trim(),
       phone: draft.phone?.trim() || undefined,
     };
     const utm = getUtm();
-    // Server save is best-effort (serverless storage is ephemeral).
-    // The briefing always travels with the client, so a failed save
-    // never blocks the order.
     let orderId = crypto.randomUUID();
     try {
       const res = await fetch("/api/briefing", {
@@ -262,6 +326,8 @@ export default function Wizard() {
     return <div className="min-h-[50vh]" aria-busy="true" />;
   }
 
+  const reinforce = interp(f.reinforce[step] ?? "", draft.theirName);
+
   return (
     <div className="mx-auto flex min-h-dvh max-w-lg flex-col px-5 pb-10 pt-6">
       <div className="flex items-center justify-between gap-4">
@@ -273,18 +339,29 @@ export default function Wizard() {
         <SoundwaveProgress step={step} />
       </div>
 
-      <div className="mt-10 grow">
+      {/* Progress count + emotional reinforcement */}
+      <div className="mt-3">
+        <span className="text-[11px] font-bold uppercase tracking-[0.16em] text-burgundy/60">
+          Step {step + 1} of {TOTAL_STEPS}
+        </span>
+        <p className="mt-0.5 font-script text-lg leading-tight text-burgundy">{reinforce}</p>
+      </div>
+
+      <div className="mt-8 grow">
         {step === 0 && (
           <section aria-labelledby="q-recipient">
             <h1 id="q-recipient" className="font-display text-3xl font-semibold leading-tight text-burgundy-deep">
               {f.steps.recipient.question}
             </h1>
+            <p className="mt-2 text-[15px] text-ink-soft">{f.steps.recipient.subtitle}</p>
             <div className="mt-6">
               <ChipGrid
-                options={f.steps.recipient.options}
+                options={f.steps.recipient.options.map((o) => o.value)}
                 value={draft.recipient}
                 onPick={(v) => {
-                  update({ recipient: v });
+                  // changing recipient invalidates a now-irrelevant occasion
+                  const keepOccasion = occasionOptions(v).includes(draft.occasion ?? "");
+                  update({ recipient: v, occasion: keepOccasion ? draft.occasion : undefined });
                   setTimeout(next, 200);
                 }}
               />
@@ -297,9 +374,10 @@ export default function Wizard() {
             <h1 id="q-occasion" className="font-display text-3xl font-semibold leading-tight text-burgundy-deep">
               {f.steps.occasion.question}
             </h1>
+            <p className="mt-2 text-[15px] text-ink-soft">{f.steps.occasion.subtitle}</p>
             <div className="mt-6">
               <ChipGrid
-                options={content.occasions.items.map((o) => ({ value: o.label }))}
+                options={occasionOptions(draft.recipient)}
                 value={draft.occasion}
                 onPick={(v) => {
                   update({ occasion: v });
@@ -315,6 +393,7 @@ export default function Wizard() {
             <h1 id="q-names" className="font-display text-3xl font-semibold leading-tight text-burgundy-deep">
               {f.steps.names.question}
             </h1>
+            <p className="mt-2 text-[15px] text-ink-soft">{f.steps.names.subtitle}</p>
             <div className="mt-6 space-y-5">
               <label className="block">
                 <span className="text-sm font-bold text-ink">{f.steps.names.theirName}</span>
@@ -345,16 +424,16 @@ export default function Wizard() {
         {step === 3 && (
           <section aria-labelledby="q-story">
             <h1 id="q-story" className="font-display text-3xl font-semibold leading-tight text-burgundy-deep">
-              {f.steps.story.question}
+              {interp(storyCfg.question, draft.theirName)}
             </h1>
-            <p className="mt-2 text-sm text-ink-soft">{f.steps.story.hint}</p>
+            <p className="mt-2 text-sm text-ink-soft">{interp(storyCfg.hint, draft.theirName)}</p>
             <textarea
               value={draft.story ?? ""}
               onChange={(e) => {
                 update({ story: e.target.value });
                 if (e.target.value.trim().length >= f.steps.story.minChars) setShowNudge(false);
               }}
-              placeholder={f.steps.story.placeholders[placeholderIdx]}
+              placeholder={interp(storyCfg.placeholders[placeholderIdx], draft.theirName)}
               rows={8}
               className="mt-5 w-full rounded-xl border-2 border-burgundy/20 bg-linen-warm px-4 py-3.5 text-[16px] leading-relaxed text-ink placeholder:text-ink-soft/50 focus:border-burgundy focus:outline-none"
             />
@@ -377,6 +456,8 @@ export default function Wizard() {
             <h1 id="q-vibe" className="font-display text-3xl font-semibold leading-tight text-burgundy-deep">
               {f.steps.vibe.question}
             </h1>
+            <p className="mt-2 text-[15px] text-ink-soft">{f.steps.vibe.subtitle}</p>
+
             <p className="mt-5 text-sm font-bold text-ink">{f.steps.vibe.styleLabel}</p>
             <div className="mt-2 grid grid-cols-2 gap-2.5">
               {f.steps.vibe.styles.map((s) => (
@@ -411,24 +492,13 @@ export default function Wizard() {
                 className="mt-1.5 w-full rounded-xl border-2 border-burgundy/20 bg-linen-warm px-4 py-3 text-[15px] text-ink placeholder:text-ink-soft/50 focus:border-burgundy focus:outline-none"
               />
             </label>
+
             <p className="mt-5 text-sm font-bold text-ink">{f.steps.vibe.moodLabel}</p>
-            <div className="mt-2 grid grid-cols-2 gap-2.5">
-              {f.steps.vibe.moods.map((m) => (
-                <button
-                  key={m}
-                  type="button"
-                  aria-pressed={draft.mood === m}
-                  onClick={() => update({ mood: m })}
-                  className={`rounded-2xl border-2 px-4 py-3.5 text-[15px] font-semibold transition-colors ${
-                    draft.mood === m
-                      ? "border-burgundy bg-blush-soft text-burgundy-deep"
-                      : "border-burgundy/15 bg-linen-warm text-ink hover:border-burgundy/40"
-                  }`}
-                >
-                  {m}
-                </button>
-              ))}
-            </div>
+            <PillGroup options={f.steps.vibe.moods} value={draft.mood} onPick={(m) => update({ mood: m })} />
+
+            <p className="mt-5 text-sm font-bold text-ink">{f.steps.vibe.voiceLabel}</p>
+            <PillGroup options={f.steps.vibe.voices} value={draft.voice} onPick={(v) => update({ voice: v })} />
+
             <audio ref={previewRef} preload="none" />
           </section>
         )}
@@ -438,6 +508,7 @@ export default function Wizard() {
             <h1 id="q-delivery" className="font-display text-3xl font-semibold leading-tight text-burgundy-deep">
               {f.steps.delivery.question}
             </h1>
+            <p className="mt-2 text-[15px] text-ink-soft">{f.steps.delivery.subtitle}</p>
             <div className="mt-6 space-y-5">
               <label className="block">
                 <span className="text-sm font-bold text-ink">{f.steps.delivery.emailLabel}</span>
@@ -468,6 +539,7 @@ export default function Wizard() {
                 />
               </label>
             </div>
+            <p className="mt-4 text-center text-xs font-medium text-ink-soft">{f.steps.delivery.reassurance}</p>
             {error && (
               <p className="mt-4 rounded-lg bg-blush-soft px-3 py-2 text-sm font-semibold text-burgundy-deep" role="alert">
                 {error}
@@ -477,7 +549,7 @@ export default function Wizard() {
         )}
       </div>
 
-      {/* Nav buttons (steps with chips auto-advance) */}
+      {/* Nav buttons (chip steps auto-advance) */}
       <div className="mt-8 flex items-center gap-3">
         {step > 0 && (
           <button type="button" onClick={back} className="btn-ghost px-5 py-3 text-sm">

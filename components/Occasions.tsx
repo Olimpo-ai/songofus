@@ -25,7 +25,7 @@ export default function Occasions() {
             return (
               <li key={o.slug}>
                 <Link
-                  href={`/create?occasion=${encodeURIComponent(o.label)}`}
+                  href={`/create?${o.query}`}
                   className={`inline-flex items-center gap-2 rounded-full border px-4 py-2.5 text-[15px] font-semibold transition-transform hover:-translate-y-0.5 ${tints[i % tints.length]}`}
                 >
                   {o.label}

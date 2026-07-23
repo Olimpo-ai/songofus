@@ -20,7 +20,14 @@ function key(): string {
 
 /** Turn a briefing into a Suno prompt. Non-custom mode: Suno writes the lyrics from this description. */
 export function briefingToPrompt(b: Briefing): string {
-  const vocal = b.mood === "Fun" || b.mood === "Uplifting" ? "bright, joyful vocal" : "warm, heartfelt vocal";
+  const tone = b.mood === "Fun" || b.mood === "Uplifting" ? "bright, joyful" : "warm, heartfelt";
+  const voiceMap: Record<string, string> = {
+    Female: "female lead vocal",
+    Male: "male lead vocal",
+    Duet: "male and female duet",
+    "Surprise me": "the best-fitting vocal",
+  };
+  const vocal = `${tone} ${voiceMap[b.voice ?? "Surprise me"] ?? "the best-fitting vocal"}`;
   return [
     `A ${b.mood.toLowerCase()} ${b.style.toLowerCase()} song for ${b.theirName}, from ${b.yourName}.`,
     `Occasion: ${b.occasion}. The recipient is their ${b.recipient.toLowerCase()}.`,

@@ -14,6 +14,7 @@ interface RecapBriefing {
   yourName: string;
   style: string;
   mood: string;
+  voice?: string;
 }
 
 /** The full order saved by the wizard — survives serverless storage loss. */
@@ -120,6 +121,7 @@ export default function ReviewCard() {
           <dt className="font-bold text-ink">{content.review.vibe}</dt>
           <dd className="text-right text-ink-soft">
             {briefing.style} · {briefing.mood}
+            {briefing.voice && briefing.voice !== "Surprise me" ? ` · ${briefing.voice} voice` : ""}
           </dd>
         </div>
       </dl>
