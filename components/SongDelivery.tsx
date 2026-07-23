@@ -43,8 +43,8 @@ function Icon({ name }: { name: string }) {
   }
 }
 
-export default function SongDelivery({ token }: { token: string }) {
-  const data = useMemo(() => decodeToken(token), [token]);
+export default function SongDelivery({ token, data: dataProp }: { token?: string; data?: SongLinkData }) {
+  const data = useMemo(() => dataProp ?? (token ? decodeToken(token) : null), [dataProp, token]);
   const [pageUrl, setPageUrl] = useState("");
   const [toast, setToast] = useState<string | null>(null);
   const [canNativeShare, setCanNativeShare] = useState(false);
@@ -72,8 +72,12 @@ export default function SongDelivery({ token }: { token: string }) {
   }
 
   const name = data.n?.trim() || "them";
-  const shareText = `Listen to the song we made for ${name} 🎵`;
-  const giftText = `${name}, someone made you a song. Press play 🎵`;
+  const fromName = data.y?.trim();
+  // Warm, gift-framed messages. The recipient reads these — make it personal.
+  const giftText = fromName
+    ? `${name}, ${fromName} made you something special 🎁 A song, just for you — press play 🎵`
+    : `${name}, someone made you something special 🎁 A song, just for you — press play 🎵`;
+  const shareText = `I turned our story into a song for ${name} 🎵 Listen:`;
 
   const nativeShare = async (text: string) => {
     try {

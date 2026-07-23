@@ -36,7 +36,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: "TuneOfUs — Your story. Their song. Ready in 1 hour.",
     description:
-      "Answer 5 questions. We turn your memories into a studio-quality song, delivered in 1 hour. From $39.",
+      "Answer 5 questions. We turn your memories into a studio-quality song, delivered in 1 hour. From $19.",
     url: config.siteUrl,
     siteName: "TuneOfUs",
     images: [{ url: "/og/default.jpg", width: 1200, height: 630, alt: "TuneOfUs — personalized songs in 1 hour" }],

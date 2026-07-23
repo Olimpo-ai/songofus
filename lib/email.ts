@@ -1,5 +1,6 @@
 import { Resend } from "resend";
 import { songPageUrl } from "./songlink";
+import { createShortSong } from "./shortlink";
 
 /**
  * Transactional email via Resend, tuned to the occasion the buyer chose.
@@ -173,8 +174,9 @@ export interface SongEmailOpts {
 }
 
 /** Builds the delivery email HTML + subject (no send) — used by the
- *  sender and by the dev preview route. */
-export function renderSongEmail(opts: SongEmailOpts): { subject: string; html: string } {
+ *  sender and by the dev preview route. `songUrl` is the (ideally short)
+ *  song-page link; when omitted a long self-contained link is built. */
+export function renderSongEmail(opts: SongEmailOpts & { songUrl?: string }): { subject: string; html: string } {
   const { theirName, yourName, style, occasion = "", tracks } = opts;
   const t = occasionTheme(occasion, theirName, yourName);
   const name = theirName?.trim() || "them";
@@ -182,13 +184,15 @@ export function renderSongEmail(opts: SongEmailOpts): { subject: string; html: s
   const styleTag = style ? `<span style="font-family:${sans};font-size:12px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:${BURGUNDY};opacity:.75;">${style}${occasion ? ` &nbsp;·&nbsp; ${occasion}` : ""}</span>` : "";
 
   // The song page: listen, save-to-phone, and one-tap sharing all live here.
-  const link = songPageUrl(SITE, {
-    n: theirName,
-    y: yourName,
-    o: occasion,
-    s: style ?? "",
-    t: clean.map((x, i) => ({ title: x.title || `${name}'s song${clean.length > 1 ? ` (v${i + 1})` : ""}`, url: x.audioUrl })),
-  });
+  const link =
+    opts.songUrl ||
+    songPageUrl(SITE, {
+      n: theirName,
+      y: yourName,
+      o: occasion,
+      s: style ?? "",
+      t: clean.map((x, i) => ({ title: x.title || `${name}'s song${clean.length > 1 ? ` (v${i + 1})` : ""}`, url: x.audioUrl })),
+    });
 
   const primary = `<table role="presentation" cellpadding="0" cellspacing="0" style="margin:4px auto 0;"><tr><td style="border-radius:999px;background:linear-gradient(180deg,${GOLD_SHEEN},${GOLD});">
     <a href="${link}" style="display:inline-block;padding:16px 34px;font-family:${sans};font-weight:800;font-size:17px;color:${LINEN};text-decoration:none;">▶&nbsp; Open ${name}'s song</a>
@@ -260,7 +264,25 @@ export function renderSongEmail(opts: SongEmailOpts): { subject: string; html: s
 }
 
 export async function sendSongEmail(opts: SongEmailOpts) {
-  const { subject, html } = renderSongEmail(opts);
+  // Prefer a short /s/<id> link (Vercel Blob) — tidy to share, durable.
+  // Falls back to the long self-contained /song?d= link if Blob is off.
+  let songUrl: string | undefined;
+  try {
+    const name = opts.theirName?.trim() || "them";
+    const clean = opts.tracks.filter((x) => x.audioUrl);
+    const id = await createShortSong({
+      n: opts.theirName,
+      y: opts.yourName,
+      o: opts.occasion ?? "",
+      s: opts.style ?? "",
+      t: clean.map((x, i) => ({ title: x.title || `${name}'s song${clean.length > 1 ? ` (v${i + 1})` : ""}`, url: x.audioUrl })),
+    });
+    if (id) songUrl = `${SITE}/s/${id}`;
+  } catch (err) {
+    console.warn("short link creation skipped", err);
+  }
+
+  const { subject, html } = renderSongEmail({ ...opts, songUrl });
   return getResend().emails.send({
     from: FROM,
     to: opts.to,
