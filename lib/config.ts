@@ -3,8 +3,12 @@
  * business grows live here or in env vars — never inside components.
  */
 export const config = {
-  /** Social-proof counter in the hero eyebrow. Update as orders grow. */
-  tearsOfJoyCount: process.env.NEXT_PUBLIC_TEARS_COUNT ?? "12,000+",
+  /**
+   * Couple-focused campaign: the funnel targets partners only, so the
+   * wizard skips "who is this for?" and starts at the occasion.
+   * Set false to reopen the full recipient list (mum, dad, friend…).
+   */
+  coupleMode: true,
 
   /** Prices in whole dollars (display) and cents (Stripe). */
   price: {
@@ -24,8 +28,6 @@ export const config = {
 
   siteUrl: process.env.NEXT_PUBLIC_SITE_URL ?? "https://tuneofus.com",
   supportEmail: "hello@tuneofus.com",
-
-  trustpilotScore: "4.9",
 
   /** Recent-activity toast cadence (ms). */
   toastIntervalMs: 45_000,

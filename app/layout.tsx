@@ -29,24 +29,24 @@ const caveat = Caveat({
 export const metadata: Metadata = {
   metadataBase: new URL(config.siteUrl),
   title: {
-    default: "TuneOfUs — Your story. Their song. Ready in 1 hour.",
+    default: "TuneOfUs — A love song made from your real story",
     template: "%s · TuneOfUs",
   },
   description:
-    "Turn your story into a real, studio-quality personalized song — delivered in 1 hour. The most personal gift under $40. Anniversaries, mums, dads, weddings, birthdays.",
+    "Surprise your partner with a song made from your real love story. Their name, your memories and the moments only you two understand — turned into a one-of-a-kind song.",
   openGraph: {
-    title: "TuneOfUs — Your story. Their song. Ready in 1 hour.",
+    title: "TuneOfUs — A love song made from your real story",
     description:
-      "Answer 5 questions. We turn your memories into a studio-quality song, delivered in 1 hour. From $19.",
+      "The story only you two share, turned into a song only you two will have. Delivered in minutes, from $19.",
     url: config.siteUrl,
     siteName: "TuneOfUs",
-    images: [{ url: "/og/default.jpg", width: 1200, height: 630, alt: "TuneOfUs — personalized songs in 1 hour" }],
+    images: [{ url: "/og/default.jpg", width: 1200, height: 630, alt: "TuneOfUs — personalized love songs" }],
     type: "website",
   },
   twitter: {
     card: "summary_large_image",
-    title: "TuneOfUs — Your story. Their song. Ready in 1 hour.",
-    description: "The most personal gift under $40. Studio-quality personalized songs, delivered in 1 hour.",
+    title: "TuneOfUs — A love song made from your real story",
+    description: "The story only you two share, turned into a song only you two will have.",
     images: ["/og/default.jpg"],
   },
 };

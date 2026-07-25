@@ -35,7 +35,6 @@ export default function ReviewCard() {
   const router = useRouter();
   const orderId = searchParams.get("oid");
   const [briefing, setBriefing] = useState<RecapBriefing | null>(null);
-  const [bump, setBump] = useState(true); // pre-checked — most people add this
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -57,7 +56,8 @@ export default function ReviewCard() {
       .catch(() => router.replace("/create"));
   }, [orderId, router]);
 
-  const total = config.price.core + (bump ? config.price.bump : 0);
+  // Direct checkout — no add-ons between the buyer and the purchase.
+  const total = config.price.core;
 
   const checkout = async () => {
     if (!orderId || loading) return;
@@ -66,16 +66,12 @@ export default function ReviewCard() {
     events.initiateCheckout(total);
     try {
       const local = loadLocalOrder(orderId);
-      // remember the bump choice so /thanks reports the right Purchase value
-      try {
-        if (local) localStorage.setItem("tuneofus_order", JSON.stringify({ ...local, bump }));
-      } catch {}
       const res = await fetch("/api/checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           orderId,
-          bump,
+          bump: false,
           product: "song",
           briefing: local?.briefing,
           utm: local?.utm,
@@ -126,36 +122,12 @@ export default function ReviewCard() {
         </div>
       </dl>
 
-      {/* Order bump */}
-      <label
-        className={`mt-4 flex cursor-pointer items-start gap-3 rounded-2xl border-2 p-4 transition-colors ${
-          bump ? "border-burgundy bg-blush-soft" : "border-dashed border-burgundy/30 bg-linen-warm"
-        }`}
-      >
-        <input
-          type="checkbox"
-          checked={bump}
-          onChange={(e) => setBump(e.target.checked)}
-          className="mt-1 h-5 w-5 accent-[#8a0f33]"
-        />
-        <span>
-          <span className="block text-[15px] font-bold text-burgundy-deep">{content.review.bump.title}</span>
-          <span className="mt-0.5 block text-sm text-ink-soft">{content.review.bump.sub}</span>
-        </span>
-      </label>
-
-      {/* Totals */}
+      {/* Totals — single line, no add-ons */}
       <div className="mt-5 space-y-1.5 border-t border-burgundy/15 pt-4 text-[15px]">
         <div className="flex justify-between">
           <span>{content.review.lineCore}</span>
           <span>${config.price.core}</span>
         </div>
-        {bump && (
-          <div className="flex justify-between">
-            <span>{content.review.lineBump}</span>
-            <span>${config.price.bump}</span>
-          </div>
-        )}
         <div className="flex justify-between pt-1 text-lg font-bold text-burgundy-deep">
           <span>{content.review.total}</span>
           <span style={{ color: "var(--gold)" }}>${total}</span>

@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { content } from "@/lib/content";
+import { config } from "@/lib/config";
 import { events } from "@/lib/analytics";
 import { getUtm } from "@/lib/utm";
 import type { Briefing } from "@/lib/types";
@@ -15,7 +16,20 @@ const f = content.form;
 type Draft = Partial<Briefing> & { step?: number; customStyle?: string };
 
 const STEP_NAMES = ["recipient", "occasion", "names", "story", "vibe", "delivery"] as const;
-const TOTAL_STEPS = STEP_NAMES.length;
+
+/**
+ * Couple-focused campaign: the recipient is always the partner, so step 0
+ * is skipped entirely — one less question between the ad and the order.
+ * Indices stay stable (so the step bodies don't move); FIRST_STEP and
+ * VISIBLE_STEPS handle the offset for navigation and the progress bar.
+ */
+const COUPLE_MODE = config.coupleMode;
+const DEFAULT_RECIPIENT = "Partner";
+const FIRST_STEP = COUPLE_MODE ? 1 : 0;
+const LAST_STEP = STEP_NAMES.length - 1;
+const VISIBLE_STEPS = STEP_NAMES.length - FIRST_STEP;
+/** 1-based position of a step index, for display. */
+const stepPosition = (step: number) => step - FIRST_STEP + 1;
 
 function loadDraft(): Draft {
   try {
@@ -49,16 +63,17 @@ function storyConfig(recipient?: string) {
 /** Progress bar styled as a filling soundwave. */
 function SoundwaveProgress({ step }: { step: number }) {
   const bars = 28;
-  const filled = Math.round(((step + 1) / TOTAL_STEPS) * bars);
+  const pos = stepPosition(step);
+  const filled = Math.round((pos / VISIBLE_STEPS) * bars);
   const heights = Array.from({ length: bars }, (_, i) => 8 + ((i * 37) % 17));
   return (
     <div
       className="flex h-8 items-center gap-[3px]"
       role="progressbar"
-      aria-valuenow={step + 1}
+      aria-valuenow={pos}
       aria-valuemin={1}
-      aria-valuemax={TOTAL_STEPS}
-      aria-label={`${f.progressLabel}: step ${step + 1} of ${TOTAL_STEPS}`}
+      aria-valuemax={VISIBLE_STEPS}
+      aria-label={`${f.progressLabel}: step ${pos} of ${VISIBLE_STEPS}`}
     >
       {heights.map((h, i) => (
         <span
@@ -149,23 +164,25 @@ export default function Wizard() {
   const idleTimer = useRef<ReturnType<typeof setTimeout>>();
 
   // Hydrate: resume a saved draft, else honor deep-link params from the
-  // landing occasion cards (recipient / occasion) and skip ahead.
+  // landing occasion cards and skip ahead.
   useEffect(() => {
     const saved = loadDraft();
     const rParam = searchParams.get("recipient");
     const oParam = searchParams.get("occasion");
-    const resuming = typeof saved.step === "number" && saved.step > 0;
+    const resuming = typeof saved.step === "number" && saved.step > FIRST_STEP;
+
+    // Couple campaign: the recipient is always the partner.
+    if (COUPLE_MODE) saved.recipient = DEFAULT_RECIPIENT;
+    else if (rParam) saved.recipient = rParam;
 
     if (!resuming) {
-      if (rParam) saved.recipient = rParam;
       if (oParam) saved.occasion = oParam;
-      // start where the deep-link leaves off
-      let start = 0;
-      if (rParam && oParam) start = 2;
-      else if (rParam) start = 1;
-      else if (oParam) start = 1;
+      // start where the deep-link (or couple mode) leaves off
+      let start = FIRST_STEP;
+      if (saved.occasion) start = 2;
+      else if (!COUPLE_MODE && rParam) start = 1;
       setStep(start);
-    } else if (saved.step! < TOTAL_STEPS) {
+    } else if (saved.step! <= LAST_STEP) {
       setStep(saved.step!);
     }
 
@@ -234,7 +251,7 @@ export default function Wizard() {
   }, [step, showModal]);
 
   const goTo = (n: number) => {
-    events.completeStep(step + 1, STEP_NAMES[step]);
+    events.completeStep(stepPosition(step), STEP_NAMES[step]);
     setStep(n);
     setDraft((d) => {
       const nd = { ...d, step: n };
@@ -244,9 +261,9 @@ export default function Wizard() {
     window.scrollTo({ top: 0 });
   };
 
-  const next = () => goTo(Math.min(step + 1, TOTAL_STEPS - 1));
+  const next = () => goTo(Math.min(step + 1, LAST_STEP));
   const back = () => {
-    const n = Math.max(step - 1, 0);
+    const n = Math.max(step - 1, FIRST_STEP);
     setStep(n);
     setDraft((d) => {
       const nd = { ...d, step: n };
@@ -288,7 +305,7 @@ export default function Wizard() {
     if (!canContinue() || submitting) return;
     setSubmitting(true);
     setError(null);
-    events.completeStep(6, "delivery");
+    events.completeStep(stepPosition(LAST_STEP), "delivery");
     const briefing: Briefing = {
       recipient: draft.recipient!,
       occasion: draft.occasion!,
@@ -342,7 +359,7 @@ export default function Wizard() {
       {/* Progress count + emotional reinforcement */}
       <div className="mt-3">
         <span className="text-[11px] font-bold uppercase tracking-[0.16em] text-burgundy/60">
-          Step {step + 1} of {TOTAL_STEPS}
+          Step {stepPosition(step)} of {VISIBLE_STEPS}
         </span>
         <p className="mt-0.5 font-script text-lg leading-tight text-burgundy">{reinforce}</p>
       </div>
@@ -551,7 +568,7 @@ export default function Wizard() {
 
       {/* Nav buttons (chip steps auto-advance) */}
       <div className="mt-8 flex items-center gap-3">
-        {step > 0 && (
+        {step > FIRST_STEP && (
           <button type="button" onClick={back} className="btn-ghost px-5 py-3 text-sm">
             {f.back}
           </button>

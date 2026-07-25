@@ -2,7 +2,7 @@ import Hero from "@/components/Hero";
 import HowItWorks from "@/components/HowItWorks";
 import ReactionWall from "@/components/ReactionWall";
 import Occasions from "@/components/Occasions";
-import Comparison from "@/components/Comparison";
+import StoryProof from "@/components/StoryProof";
 import MomentBand from "@/components/MomentBand";
 import OfferCard from "@/components/OfferCard";
 import Faq from "@/components/Faq";
@@ -12,14 +12,17 @@ import ActivityToasts from "@/components/ActivityToasts";
 import { config } from "@/lib/config";
 import { content } from "@/lib/content";
 
-/** schema.org Product markup with review stars for rich results. */
+/**
+ * schema.org Product markup. No aggregateRating until we have real,
+ * verifiable reviews — fabricated ratings get sites penalized.
+ */
 function ProductJsonLd() {
   const jsonLd = {
     "@context": "https://schema.org",
     "@type": "Product",
-    name: "TuneOfUs Personalized Song",
+    name: "TuneOfUs Personalized Love Song",
     description:
-      "A studio-quality personalized song written from your story, delivered in 1 hour.",
+      "A studio-quality personalized love song written from your real story, delivered in minutes.",
     brand: { "@type": "Brand", name: "TuneOfUs" },
     image: `${config.siteUrl}/og/default.jpg`,
     offers: {
@@ -28,11 +31,6 @@ function ProductJsonLd() {
       priceCurrency: "USD",
       availability: "https://schema.org/InStock",
       url: `${config.siteUrl}/create`,
-    },
-    aggregateRating: {
-      "@type": "AggregateRating",
-      ratingValue: config.trustpilotScore,
-      reviewCount: "1204",
     },
   };
   return (
@@ -66,11 +64,12 @@ export default function HomePage() {
     <main>
       <ProductJsonLd />
       <FaqJsonLd />
+      {/* hook → proof it's real → proof it lands → how → your moment → offer */}
       <Hero />
-      <HowItWorks />
+      <StoryProof />
       <ReactionWall />
+      <HowItWorks />
       <Occasions />
-      <Comparison />
       <MomentBand />
       <OfferCard />
       <Faq />

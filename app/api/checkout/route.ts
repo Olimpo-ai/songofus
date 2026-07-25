@@ -48,7 +48,7 @@ export async function POST(req: NextRequest) {
           currency: config.currency,
           product_data: {
             name: "Personalized Song",
-            description: `A studio-quality song about ${briefing.theirName || "them"}, delivered in 1 hour.`,
+            description: `A studio-quality song about ${briefing.theirName || "them"}, delivered in minutes.`,
           },
           unit_amount: config.price.coreCents,
         },

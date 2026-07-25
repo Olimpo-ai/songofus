@@ -1,7 +1,7 @@
 import Reveal from "./Reveal";
 
 /**
- * Full-width emotional beat between comparison and offer: the kitchen
+ * Full-width emotional beat just before the offer: the kitchen
  * slow-dance photo with a handwritten caption. Image lives at
  * /public/moments/kitchen-dance.jpg — swap freely.
  */

@@ -3,8 +3,8 @@ import type { Metadata } from "next";
 import Wizard from "@/components/create/Wizard";
 
 export const metadata: Metadata = {
-  title: "Create their song",
-  description: "5 questions, 3 minutes. Your personalized song, delivered in 1 hour.",
+  title: "Create your love song",
+  description: "A few questions, three minutes. Your love song, delivered in minutes.",
   robots: { index: false },
 };
 

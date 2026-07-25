@@ -9,57 +9,85 @@ export const content = {
   brand: {
     name: "TuneOfUs",
     domain: "TuneOfUs.com",
-    tagline: "Your story. Their song. Ready in 1 hour.",
+    tagline: "The story only you two share, turned into a song only you two will have.",
   },
 
   hero: {
-    eyebrow: `Personalized songs · ${config.tearsOfJoyCount} tears of joy`,
-    h1: "Turn your story into the song they'll never stop playing.",
-    ctaPrimary: `Create their song → $${config.price.core}`,
-    ctaSecondary: "Hear real examples",
+    eyebrow: "Personalized love songs",
+    h1: "Surprise your partner with a song made from your real love story.",
+    sub: "Their name, your memories and the moments only you two understand — turned into a one-of-a-kind song.",
+    ctaPrimary: "Create Your Love Song",
+    ctaSecondary: "Hear a real one",
     urgencyPill: "Launch price — ends soon",
     annotation: "press play. seriously.",
-    trust: [
-      { icon: "bolt", label: "1-hour delivery" },
-      { icon: "shield", label: "Love-it guarantee" },
-      { icon: "star", label: `${config.trustpilotScore} on Trustpilot` },
-    ],
-    samples: [
-      { id: "pop", label: "Pop", src: "/audio/demo-pop.mp3" },
-      { id: "acoustic", label: "Acoustic", src: "/audio/demo-acoustic.mp3" },
-      { id: "country", label: "Country", src: "/audio/demo-country.mp3" },
-      { id: "rnb", label: "R&B", src: "/audio/demo-rnb.mp3" },
-      { id: "rock", label: "Rock", src: "/audio/demo-rock.mp3" },
-      { id: "hiphop", label: "Hip-Hop", src: "/audio/demo-hiphop.mp3" },
-      { id: "latin", label: "Latin", src: "/audio/demo-latin.mp3" },
-      { id: "folk", label: "Indie Folk", src: "/audio/demo-folk.mp3" },
-      { id: "reggae", label: "Reggae", src: "/audio/demo-reggae.mp3" },
-      { id: "gospel", label: "Gospel", src: "/audio/demo-gospel.mp3" },
-      { id: "dance", label: "Dance / EDM", src: "/audio/demo-dance.mp3" },
-      { id: "jazz", label: "Jazz", src: "/audio/demo-jazz.mp3" },
-      { id: "afrobeats", label: "Afrobeats", src: "/audio/demo-afrobeats.mp3" },
-      { id: "lofi", label: "Lo-fi", src: "/audio/demo-lofi.mp3" },
+  },
+
+  /**
+   * The proof section — replaces the abstract style picker. Each card shows
+   * what a couple actually wrote, the exact lyric that came back, and the
+   * finished song. This is what makes personalization concrete.
+   */
+  proof: {
+    heading: "This is what personalization actually sounds like.",
+    sub: "Three real couples. What they told us, and the song that came back.",
+    labelStory: "What they told us",
+    labelSong: "What came back",
+    annotation: "read the lyrics 🎧",
+    items: [
+      {
+        id: "lisbon",
+        couple: "Maria & Alex",
+        context: "10 years together · Acoustic",
+        story:
+          "We met at a tiny café in Lisbon when she asked to borrow my phone charger. Ten years later we still argue about who fell first. She burns the lasagna every Sunday and we eat it anyway.",
+        lyric: "At that tiny cafe\nIn Lisbon rain\nYou asked for my charger\nLike it was nothing",
+        lyricTail: "You burn the lasagna\nLike every week",
+        title: "Charger at the Cafe",
+        src: "/audio/demo-acoustic.mp3",
+      },
+      {
+        id: "hoodies",
+        couple: "Alicia & Marcus",
+        context: "Anniversary · R&B",
+        story:
+          "We slow-danced in the rain outside our first apartment. She steals my hoodies and swears they fit her better. After all these years she still makes me nervous.",
+        lyric: "You take my hoodies\nCall them yours\nSay they fit you\nBetter than before",
+        lyricTail: "I'm still nervous by you",
+        title: "Rain on Lenox",
+        src: "/audio/demo-rnb.mp3",
+      },
+      {
+        id: "barcelona",
+        couple: "Sofia & Diego",
+        context: "Just because · Latin",
+        story:
+          "We met dancing at her cousin's wedding in Barcelona. My salsa is terrible — she laughed at every step and never let go of my hand.",
+        lyric: "I stepped on every line\nyou smiled like you knew\nthat my feet were lying\nbut your hand pulled me through",
+        lyricTail: "Sofia, I still want that dance",
+        title: "Sofia in Barcelona",
+        src: "/audio/demo-latin.mp3",
+      },
     ],
   },
 
   howItWorks: {
     heading: "How it works",
-    sub: "Three minutes of your time. A lifetime of replays.",
+    sub: "Three minutes of your time. A song they'll keep forever.",
     steps: [
       {
         track: "Track 01",
         title: "Tell us your story",
-        body: "5 questions, 3 minutes. How you met, what makes them laugh, the things you'd say if you had one song to say it.",
+        body: "How you met, the inside joke, the thing you'd say if you had one song to say it. Three minutes, that's it.",
       },
       {
         track: "Track 02",
-        title: "We craft the song",
-        body: "Your names, your memories, your inside jokes — written into real lyrics and recorded in the style you pick.",
+        title: "We write your song",
+        body: "Their name, your memories, your moments — written into real lyrics and recorded studio-quality.",
       },
       {
         track: "Track 03",
-        title: "Delivered in 1 hour",
-        body: "A private link lands in your inbox (and your phone). They'll replay it forever. So will you.",
+        title: "It lands in your inbox",
+        body: "A private link, ready to play for them. Minutes, not days.",
       },
     ],
   },
@@ -69,53 +97,35 @@ export const content = {
     sub: "Real reactions from real orders. Get your camera ready.",
     annotation: "this part gets them",
     videos: [
-      { id: "r1", poster: "/reactions/r1-poster.jpg", src: "/reactions/r1.mp4", caption: "“My mum called me crying — twice.” — Sarah, Melbourne" },
+      { id: "r5", poster: "/reactions/r5-poster.jpg", src: "/reactions/r5.mp4", caption: "“We listened to it three times before saying a word.” — Priya, Sydney" },
       { id: "r2", poster: "/reactions/r2-poster.jpg", src: "/reactions/r2.mp4", caption: "“She swore she wouldn't cry. She cried.” — Tom, London" },
-      { id: "r3", poster: "/reactions/r3-poster.jpg", src: "/reactions/r3.mp4", caption: "“Played it at the wedding. Not a dry eye.” — Marcus, Austin" },
-      { id: "r4", poster: "/reactions/r4-poster.jpg", src: "/reactions/r4.mp4", caption: "“She made me play it 9 times in a row.” — Tom, Dublin" },
-      { id: "r5", poster: "/reactions/r5-poster.jpg", src: "/reactions/r5.mp4", caption: "“Dad kept it on repeat all weekend.” — Priya, Sydney" },
-      { id: "r6", poster: "/reactions/r6-poster.jpg", src: "/reactions/r6.mp4", caption: "“Best $19 I've ever spent. Ever.” — Kate, Chicago" },
+      { id: "r3", poster: "/reactions/r3-poster.jpg", src: "/reactions/r3.mp4", caption: "“Played it at our wedding. Not a dry eye.” — Marcus, Austin" },
+      { id: "r1", poster: "/reactions/r1-poster.jpg", src: "/reactions/r1.mp4", caption: "“He played it in the car and I completely lost it.” — Sarah, Melbourne" },
     ],
   },
 
   occasions: {
-    heading: "Whatever the occasion, there's a song in it",
-    // Landing "doors" — each deep-links into the wizard, pre-filling the
-    // recipient and/or occasion so cold traffic starts already personalized.
+    heading: "When people surprise their person",
+    // Landing "doors" — each deep-links into the wizard with the occasion
+    // pre-filled, so cold traffic starts already personalized.
     items: [
-      { slug: "anniversary", label: "Anniversary", query: "recipient=Partner&occasion=Anniversary" },
-      { slug: "for-mum", label: "For Mum", query: "recipient=Mum" },
-      { slug: "for-dad", label: "For Dad", query: "recipient=Dad" },
-      { slug: "wedding", label: "Wedding", query: "recipient=Partner&occasion=Wedding" },
-      { slug: "birthday", label: "Birthday", query: "occasion=Birthday" },
-      { slug: "new-baby", label: "New baby", query: "recipient=Child&occasion=New baby" },
-      { slug: "for-your-person", label: "For your person", query: "recipient=Partner" },
+      { slug: "anniversary", label: "Anniversary", query: "occasion=Anniversary" },
+      { slug: "their-birthday", label: "Their birthday", query: "occasion=Their birthday" },
+      { slug: "proposal", label: "A proposal", query: "occasion=A proposal" },
       { slug: "just-because", label: "Just because", query: "occasion=Just because" },
     ],
   },
 
-  comparison: {
-    heading: "The math is not close",
-    other: {
-      label: "Other custom song services",
-      points: ["$200+", "Up to a week of waiting", "One shot, hope it lands"],
-    },
-    us: {
-      label: "TuneOfUs",
-      points: [`$${config.price.core}`, "Ready in 1 hour", "Unlimited replays of their reaction"],
-    },
-  },
-
   offer: {
-    heading: "Everything you need to make them cry (happy tears)",
+    heading: "A song that can't be bought off a shelf",
     includes: [
       "A full ~2-minute song, studio quality",
-      "Lyrics with their name & your memories",
-      "Private share link + MP4 download",
-      "Delivered by email & SMS in 1 hour",
+      "Lyrics built from your names and your memories",
+      "Private link to play, save and share",
+      "In your inbox in minutes",
     ],
     priceNote: "one-time · no subscription",
-    cta: `Create their song → $${config.price.core}`,
+    cta: `Create Your Love Song — $${config.price.core}`,
     guarantee: "If it doesn't make them feel something, we'll remake it free.",
   },
 
@@ -124,7 +134,7 @@ export const content = {
     items: [
       {
         q: "How fast is delivery, really?",
-        a: "One hour, for real. You'll get an email (and a text if you leave your number) the moment your song is ready. Late nights and weekends included — love doesn't keep office hours.",
+        a: "Minutes, not days. Your song lands in your inbox almost as soon as you order — late nights and weekends included. Love doesn't keep office hours.",
       },
       {
         q: "What if I don't like it?",
@@ -140,7 +150,7 @@ export const content = {
       },
       {
         q: "Is it really about OUR story?",
-        a: "Completely. The lyrics are built from your answers — names, places, inside jokes, the moment you met. No templates, no fill-in-the-blank verses. If you mention the burnt lasagna, the burnt lasagna is in the song.",
+        a: "Completely. The lyrics are built from your answers — names, places, inside jokes, the moment you met. No templates, no fill-in-the-blank verses. If you mention the burnt lasagna, the burnt lasagna is in the song. Scroll up and read the lyrics from real couples if you want proof.",
       },
       {
         q: "How do they receive it?",
@@ -156,7 +166,7 @@ export const content = {
     // once we know the recipient's name.
     reinforce: [
       "Let's make something they'll never forget.",
-      "Beautiful choice. This is going to be special.",
+      "Let's make something they'll never forget.",
       "Now it's starting to feel personal.",
       "This is the part that makes them cry.",
       "Almost there — let's set the mood.",
@@ -182,7 +192,9 @@ export const content = {
         subtitle: "Pick the one that fits best.",
         // Adaptive per recipient — no more mixing "For Mum" with occasions.
         byRecipient: {
-          Partner: ["Anniversary", "Valentine's Day", "Proposal", "Wedding / first dance", "Birthday", "Just because"],
+          // Couple-focused campaign: anniversary, their birthday, a proposal
+          // or making up, and the no-occasion romantic surprise.
+          Partner: ["Anniversary", "Their birthday", "A proposal", "Making up", "Just because"],
           Mum: ["Mother's Day", "Birthday", "A big thank you", "Just because"],
           Dad: ["Father's Day", "Birthday", "A big thank you", "Just because"],
           Child: ["Birthday", "New baby", "Graduation", "Just because"],
@@ -199,7 +211,7 @@ export const content = {
         theirName: "Their name",
         theirPlaceholder: "e.g. Maria",
         yourName: "From (your name)",
-        yourPlaceholder: "e.g. Alex — or Alex & the kids",
+        yourPlaceholder: "e.g. Alex",
       },
       story: {
         // Adaptive title/placeholder/tone per recipient. {name} interpolated.
@@ -317,13 +329,13 @@ export const content = {
       },
       delivery: {
         question: "Where should we send it?",
-        subtitle: "Your song lands here within the hour.",
+        subtitle: "Your song lands here in minutes.",
         emailLabel: "Your email",
         emailPlaceholder: "you@example.com",
         phoneLabel: "Phone (optional)",
         phonePlaceholder: "+1 555 000 0000",
-        phoneHint: "so you don't miss the 1-hour delivery",
-        reassurance: "1-hour delivery · Love-it guarantee or your money back · 4.9★ from 1,200+ orders",
+        phoneHint: "so you don't miss it",
+        reassurance: "Delivered in minutes · Love it or we remake it free",
       },
     },
     next: "Next",
@@ -342,14 +354,9 @@ export const content = {
     songFor: "A song for",
     occasion: "Occasion",
     vibe: "Vibe",
-    bump: {
-      title: "Add a second version in a different style — just $" + config.price.bump,
-      sub: "Same story, two songs. Most people add this.",
-    },
     lineCore: "Personalized Song",
-    lineBump: "Second version (different style)",
     total: "Total",
-    cta: "Continue to secure checkout →",
+    cta: `Continue to secure checkout — $${config.price.core}`,
     secure: "Secure checkout by Stripe · Apple Pay & Google Pay",
   },
 
@@ -365,7 +372,9 @@ export const content = {
     waiting: "While you wait: get your camera ready. You'll want to film their reaction. Tag #MyTuneOfUs.",
   },
 
-  stickyCta: `Create their song → $${config.price.core}`,
+  // The persistent CTA carries the price: from 30% scroll on, every visitor
+  // knows the cost without having to reach the offer card.
+  stickyCta: `Create Your Love Song — $${config.price.core}`,
 
   footer: {
     email: "hello@tuneofus.com",

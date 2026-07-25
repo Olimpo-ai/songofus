@@ -123,7 +123,7 @@ function shell(inner: string, preheader: string): string {
         <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;width:100%;">
           ${inner}
           <tr><td style="padding:24px 8px 8px;text-align:center;font-family:${sans};color:#9a94a8;font-size:12px;line-height:1.6;">
-            Your story. Their song. Ready in 1 hour.<br/>
+            The story only you two share, turned into a song only you two will have.<br/>
             <a href="mailto:${REPLY_TO}" style="color:${BURGUNDY};text-decoration:none;">${REPLY_TO}</a>
             &nbsp;·&nbsp; <a href="${SITE}" style="color:${BURGUNDY};text-decoration:none;">TuneOfUs.com</a>
           </td></tr>
