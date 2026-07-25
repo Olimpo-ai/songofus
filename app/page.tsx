@@ -1,3 +1,4 @@
+import SiteHeader from "@/components/SiteHeader";
 import Hero from "@/components/Hero";
 import HowItWorks from "@/components/HowItWorks";
 import ReactionWall from "@/components/ReactionWall";
@@ -8,7 +9,6 @@ import OfferCard from "@/components/OfferCard";
 import Faq from "@/components/Faq";
 import Footer from "@/components/Footer";
 import StickyCta from "@/components/StickyCta";
-import ActivityToasts from "@/components/ActivityToasts";
 import { config } from "@/lib/config";
 import { content } from "@/lib/content";
 
@@ -65,6 +65,7 @@ export default function HomePage() {
       <ProductJsonLd />
       <FaqJsonLd />
       {/* hook → proof it's real → proof it lands → how → your moment → offer */}
+      <SiteHeader />
       <Hero />
       <StoryProof />
       <ReactionWall />
@@ -75,7 +76,6 @@ export default function HomePage() {
       <Faq />
       <Footer />
       <StickyCta />
-      <ActivityToasts />
     </main>
   );
 }

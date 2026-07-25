@@ -4,17 +4,25 @@ import { getOrder, updateOrder } from "@/lib/store";
 import { config } from "@/lib/config";
 
 /**
- * Creates a Stripe Checkout session.
- *  - product: "song"  → core $39 (+ optional $15 bump line item)
- *  - product: "video" → post-purchase $30 photo-video upsell
- * Apple Pay / Google Pay come free with hosted Checkout.
- * Local currency: enable Adaptive Pricing in Stripe Dashboard →
- * Settings → Checkout (no code needed) — see README.
+ * Creates a Stripe Checkout session for the one thing we can actually
+ * deliver: the personalized song.
+ *
+ * The photo-video upsell is DISABLED — there is no production process for
+ * it, and fulfillment skips any non-"song" product, so a purchase would
+ * take money and deliver nothing. Re-enable only alongside real
+ * fulfillment (see lib/fulfill.ts).
+ *
+ * Apple Pay / Google Pay come free with hosted Checkout. Local currency:
+ * enable Adaptive Pricing in Stripe Dashboard → Settings → Checkout.
  */
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { orderId, bump, product } = body;
+    const { orderId, product } = body;
+
+    if (product && product !== "song") {
+      return NextResponse.json({ error: "That product isn't available." }, { status: 400 });
+    }
     // Store lookup is best-effort (serverless FS is ephemeral) — the
     // client sends its own copy of the briefing as the source of truth.
     const order = await getOrder(orderId).catch(() => null);
@@ -26,24 +34,9 @@ export async function POST(req: NextRequest) {
 
     const stripe = getStripe();
     const origin = req.nextUrl.origin;
-    const isUpsell = product === "video";
 
-    const lineItems: { price_data: { currency: string; product_data: { name: string; description?: string }; unit_amount: number }; quantity: number }[] = [];
-
-    if (isUpsell) {
-      lineItems.push({
-        price_data: {
-          currency: config.currency,
-          product_data: {
-            name: "Photo Video of Your Song",
-            description: "Your song set to your photos — an MP4 made for posting.",
-          },
-          unit_amount: config.price.upsellCents,
-        },
-        quantity: 1,
-      });
-    } else {
-      lineItems.push({
+    const lineItems = [
+      {
         price_data: {
           currency: config.currency,
           product_data: {
@@ -53,37 +46,22 @@ export async function POST(req: NextRequest) {
           unit_amount: config.price.coreCents,
         },
         quantity: 1,
-      });
-      if (bump) {
-        lineItems.push({
-          price_data: {
-            currency: config.currency,
-            product_data: {
-              name: "Second Version — Different Style",
-              description: "Same story, a second song in another style.",
-            },
-            unit_amount: config.price.bumpCents,
-          },
-          quantity: 1,
-        });
-      }
-      await updateOrder(orderId, { bump: !!bump });
-    }
+      },
+    ];
+    await updateOrder(orderId, { bump: false });
 
     const session = await stripe.checkout.sessions.create({
       mode: "payment",
       line_items: lineItems,
       customer_email: briefing.email,
-      success_url: isUpsell
-        ? `${origin}/thanks?oid=${orderId}&video=added`
-        : `${origin}/thanks?oid=${orderId}&session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: isUpsell ? `${origin}/thanks?oid=${orderId}` : `${origin}/review?oid=${orderId}`,
+      success_url: `${origin}/thanks?oid=${orderId}&session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${origin}/review?oid=${orderId}`,
       metadata: {
-        ...briefingToMetadata(orderId, briefing, utm, !!bump),
-        product: isUpsell ? "video" : "song",
+        ...briefingToMetadata(orderId, briefing, utm, false),
+        product: "song",
       },
       payment_intent_data: {
-        description: isUpsell ? "TuneOfUs — photo video upsell" : "TuneOfUs — personalized song",
+        description: "TuneOfUs — personalized song",
       },
     });
 

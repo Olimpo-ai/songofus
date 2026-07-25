@@ -45,10 +45,8 @@ export default function ThanksContent() {
   const searchParams = useSearchParams();
   const orderId = searchParams.get("oid");
   const sessionId = searchParams.get("session_id");
-  const videoAdded = searchParams.get("video") === "added";
   const [recap, setRecap] = useState<Recap | null>(null);
   const [bump, setBump] = useState(false);
-  const [upsellLoading, setUpsellLoading] = useState(false);
 
   // Webhook-free fulfillment: the moment the buyer lands here after paying,
   // tell the server to verify the payment and start the song. Guarded so a
@@ -66,7 +64,9 @@ export default function ThanksContent() {
     })
       .then((r) => r.json())
       .then((res) => {
-        if (res?.status && res.status !== "unpaid") {
+        // Only stop retrying on a terminal success — "in_progress" or an
+        // error must stay retryable so a refresh can still rescue the order.
+        if (res?.status === "delivered" || res?.status === "already") {
           try {
             localStorage.setItem(guard, "1");
           } catch {}
@@ -85,10 +85,8 @@ export default function ThanksContent() {
     try {
       const guard = `tuneofus_purchased_${orderId}`;
       if (!localStorage.getItem(guard) && typeof window.fbq === "function") {
-        const local = JSON.parse(localStorage.getItem("tuneofus_order") || "null");
-        const withBump = !!local?.bump;
         window.fbq("track", "Purchase", {
-          value: config.price.core + (withBump ? config.price.bump : 0),
+          value: config.price.core,
           currency: "USD",
         });
         localStorage.setItem(guard, "1");
@@ -112,28 +110,6 @@ export default function ThanksContent() {
       })
       .catch(() => {});
   }, [orderId]);
-
-  const addVideo = async () => {
-    if (!orderId || upsellLoading) return;
-    setUpsellLoading(true);
-    track("UpsellClick", { order_id: orderId });
-    try {
-      let local = null;
-      try {
-        local = JSON.parse(localStorage.getItem("tuneofus_order") || "null");
-      } catch {}
-      const res = await fetch("/api/checkout", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ orderId, product: "video", briefing: local?.briefing, utm: local?.utm }),
-      });
-      const data = await res.json();
-      if (data.url) window.location.href = data.url;
-      else setUpsellLoading(false);
-    } catch {
-      setUpsellLoading(false);
-    }
-  };
 
   return (
     <main className="mx-auto max-w-lg px-5 pb-14 pt-10 text-center">
@@ -167,23 +143,6 @@ export default function ThanksContent() {
             </div>
           )}
         </dl>
-      )}
-
-      {/* Post-purchase upsell */}
-      {videoAdded ? (
-        <p className="mt-7 rounded-2xl bg-blush-soft px-5 py-4 text-[15px] font-semibold text-burgundy-deep">
-          Photo video added! We'll deliver it with your song.
-        </p>
-      ) : (
-        <div className="card-paper mt-7 p-6">
-          <h2 className="font-display text-xl font-semibold text-burgundy-deep">
-            {content.thanks.upsell.title}
-          </h2>
-          <p className="mt-1.5 text-sm text-ink-soft">{content.thanks.upsell.body}</p>
-          <button onClick={addVideo} disabled={upsellLoading} className="btn-gold mt-4 w-full px-6 py-3.5 disabled:opacity-50">
-            {upsellLoading ? "One sec…" : content.thanks.upsell.cta}
-          </button>
-        </div>
       )}
 
       <p className="annotation mx-auto mt-8 max-w-xs text-xl">{content.thanks.waiting}</p>

@@ -22,15 +22,8 @@ export default function Hero() {
             "radial-gradient(60% 55% at 50% 30%, rgba(246,223,174,0.55) 0%, rgba(240,201,203,0.35) 45%, transparent 75%)",
         }}
       />
+      {/* Brand lives in SiteHeader above — the hero leads with the promise. */}
       <div className="hero-stagger mx-auto max-w-xl text-center sm:max-w-2xl">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src="/logo/logo-mark.png"
-          alt="TuneOfUs"
-          width={402}
-          height={340}
-          className="mx-auto mb-3 h-12 w-auto sm:h-14"
-        />
         <p className="text-[13px] font-bold uppercase tracking-[0.14em] text-burgundy">
           {content.hero.eyebrow}
         </p>

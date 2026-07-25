@@ -52,37 +52,85 @@ async function startDelivery(data: ReturnType<typeof metadataToBriefing>, origin
   console.log("generation started for", data.email, "task", taskId);
 }
 
+/** An in-flight claim older than this is assumed dead and can be retaken. */
+const CLAIM_STALE_MS = 3 * 60 * 1000;
+
 /**
  * Idempotently fulfill a paid Checkout Session. Called by BOTH the success
  * page (/api/fulfill) and the Stripe webhook — whichever fires first wins,
- * the other is a no-op. Dedupe uses PaymentIntent metadata as a shared,
- * serverless-safe lock, so a customer never gets two songs.
+ * the other is a no-op.
+ *
+ * The lock lives in PaymentIntent metadata (shared + serverless-safe) and is
+ * claimed in two phases:
+ *   tou_claimed_at=<ts>  → work in progress; concurrent callers stand down
+ *   tou_fulfilled=true   → delivery actually started; nobody repeats it
+ * If the work throws, the claim is RELEASED so a retry can still deliver —
+ * a paid order must never be marked done when nothing was sent. A claim
+ * left behind by a crashed instance goes stale and is retaken.
  */
 export async function fulfillCheckoutSession(
   stripe: Stripe,
   session: Stripe.Checkout.Session,
   origin: string
-): Promise<{ status: "delivered" | "already" | "unpaid" | "skipped" }> {
+): Promise<{ status: "delivered" | "already" | "in_progress" | "unpaid" | "skipped" }> {
   if (session.payment_status !== "paid") return { status: "unpaid" };
 
   const md = (session.metadata ?? {}) as Record<string, string>;
   const product = md.product ?? "song";
   if (product !== "song") return { status: "skipped" };
 
-  // Idempotency lock via PaymentIntent metadata (survives serverless).
-  const piId = typeof session.payment_intent === "string" ? session.payment_intent : session.payment_intent?.id;
+  const piId =
+    typeof session.payment_intent === "string" ? session.payment_intent : session.payment_intent?.id;
+
+  let claimed = false;
+  let baseMeta: Record<string, string> = {};
   if (piId) {
     try {
       const pi = await stripe.paymentIntents.retrieve(piId);
-      if (pi.metadata?.tou_fulfilled === "true") return { status: "already" };
-      // claim it before doing the work so a concurrent call can't double-send
-      await stripe.paymentIntents.update(piId, { metadata: { ...pi.metadata, tou_fulfilled: "true" } });
+      baseMeta = (pi.metadata ?? {}) as Record<string, string>;
+      if (baseMeta.tou_fulfilled === "true") return { status: "already" };
+
+      const claimedAt = Number(baseMeta.tou_claimed_at ?? 0);
+      if (claimedAt && Date.now() - claimedAt < CLAIM_STALE_MS) {
+        return { status: "in_progress" }; // another call is on it
+      }
+
+      await stripe.paymentIntents.update(piId, {
+        metadata: { ...baseMeta, tou_claimed_at: String(Date.now()) },
+      });
+      claimed = true;
     } catch (err) {
-      console.warn("idempotency check failed (continuing)", err);
+      // Can't reach the lock — better to attempt delivery than to drop the order.
+      console.warn("idempotency claim failed (continuing without lock)", err);
     }
   }
 
   const data = metadataToBriefing(md);
-  await startDelivery(data, origin);
+  try {
+    await startDelivery(data, origin);
+  } catch (err) {
+    // Release the claim so the webhook retry (or a refresh) can try again.
+    if (claimed && piId) {
+      try {
+        await stripe.paymentIntents.update(piId, {
+          metadata: { ...baseMeta, tou_claimed_at: "" },
+        });
+      } catch (releaseErr) {
+        console.error("could not release fulfillment claim", releaseErr);
+      }
+    }
+    throw err;
+  }
+
+  // Only now is it safe to say this order is done.
+  if (claimed && piId) {
+    try {
+      await stripe.paymentIntents.update(piId, {
+        metadata: { ...baseMeta, tou_claimed_at: "", tou_fulfilled: "true" },
+      });
+    } catch (err) {
+      console.warn("could not mark fulfilled (delivery already started)", err);
+    }
+  }
   return { status: "delivered" };
 }

@@ -12,13 +12,8 @@ export const config = {
 
   /** Prices in whole dollars (display) and cents (Stripe). */
   price: {
-    anchor: 49, // struck-through
     core: 19,
     coreCents: 1900,
-    bump: 15,
-    bumpCents: 1500,
-    upsell: 30,
-    upsellCents: 3000,
   },
 
   /** Launch-price pill. Flag only — never a fake countdown. */

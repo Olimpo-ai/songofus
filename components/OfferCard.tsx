@@ -29,8 +29,9 @@ export default function OfferCard() {
                 {content.hero.urgencyPill}
               </span>
             )}
+            {/* No struck-through anchor: we've never charged a higher price,
+                so showing one would be a false reference price. */}
             <p>
-              <span className="text-lg text-ink-soft line-through">${config.price.anchor}</span>{" "}
               <span className="font-display text-5xl font-semibold" style={{ color: "var(--gold)" }}>
                 ${config.price.core}
               </span>

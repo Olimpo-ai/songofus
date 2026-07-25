@@ -29,9 +29,12 @@ export const content = {
    */
   proof: {
     heading: "This is what personalization actually sounds like.",
-    sub: "Three real couples. What they told us, and the song that came back.",
-    labelStory: "What they told us",
-    labelSong: "What came back",
+    // Honest framing: the songs are genuinely generated from these briefs,
+    // but the couples are examples we wrote — not customers. Never imply
+    // otherwise; the mechanism (story in → lyric out) is the proof.
+    sub: "Three example stories, put through the exact process you're about to use.",
+    labelStory: "The brief",
+    labelSong: "The lyrics it produced",
     annotation: "read the lyrics 🎧",
     items: [
       {
@@ -92,15 +95,21 @@ export const content = {
     ],
   },
 
+  /**
+   * Mood imagery for the moment you're buying — NOT customer testimonials.
+   * These are illustrations, so captions describe the moment and never
+   * quote or name a customer. When real customer footage arrives (with
+   * permission), it can replace these and be labelled as real.
+   */
   reactions: {
     heading: "The moment they press play",
-    sub: "Real reactions from real orders. Get your camera ready.",
+    sub: "This is the ten seconds you're really buying.",
     annotation: "this part gets them",
     videos: [
-      { id: "r5", poster: "/reactions/r5-poster.jpg", src: "/reactions/r5.mp4", caption: "“We listened to it three times before saying a word.” — Priya, Sydney" },
-      { id: "r2", poster: "/reactions/r2-poster.jpg", src: "/reactions/r2.mp4", caption: "“She swore she wouldn't cry. She cried.” — Tom, London" },
-      { id: "r3", poster: "/reactions/r3-poster.jpg", src: "/reactions/r3.mp4", caption: "“Played it at our wedding. Not a dry eye.” — Marcus, Austin" },
-      { id: "r1", poster: "/reactions/r1-poster.jpg", src: "/reactions/r1.mp4", caption: "“He played it in the car and I completely lost it.” — Sarah, Melbourne" },
+      { id: "r5", poster: "/reactions/r5-poster.jpg", caption: "One pair of earbuds, the whole song, not a word said." },
+      { id: "r2", poster: "/reactions/r2-poster.jpg", caption: "The line about how you met, sung back to them." },
+      { id: "r3", poster: "/reactions/r3-poster.jpg", caption: "A first dance to a song that exists only for you two." },
+      { id: "r1", poster: "/reactions/r1-poster.jpg", caption: "Hearing their own name land in the chorus." },
     ],
   },
 
@@ -150,7 +159,7 @@ export const content = {
       },
       {
         q: "Is it really about OUR story?",
-        a: "Completely. The lyrics are built from your answers — names, places, inside jokes, the moment you met. No templates, no fill-in-the-blank verses. If you mention the burnt lasagna, the burnt lasagna is in the song. Scroll up and read the lyrics from real couples if you want proof.",
+        a: "Completely. The lyrics are built from your answers — names, places, inside jokes, the moment you met. No templates, no fill-in-the-blank verses. If you mention the burnt lasagna, the burnt lasagna is in the song — scroll up and read the example lyrics to see exactly how a brief turns into verses.",
       },
       {
         q: "How do they receive it?",
@@ -364,11 +373,6 @@ export const content = {
     heading: "We're writing your song right now.",
     sub: "It usually hits your inbox within minutes. Keep an eye out.",
     recapHeading: "Your order",
-    upsell: {
-      title: `Turn it into a photo video — $${config.price.upsell}`,
-      body: "We set your song to your photos. Perfect for posting their reaction.",
-      cta: `Add the photo video → $${config.price.upsell}`,
-    },
     waiting: "While you wait: get your camera ready. You'll want to film their reaction. Tag #MyTuneOfUs.",
   },
 
