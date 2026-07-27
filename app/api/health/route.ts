@@ -14,6 +14,10 @@ export async function GET() {
     stripeWebhookSecret: !!process.env.STRIPE_WEBHOOK_SECRET,
     kieKey: !!process.env.KIE_API_KEY,
     resendKey: !!process.env.RESEND_API_KEY,
+    // Meta tracking
+    metaPixelId: process.env.NEXT_PUBLIC_META_PIXEL_ID ?? null, // public by design
+    metaCapiToken: !!process.env.META_CAPI_ACCESS_TOKEN, // required for Purchase
+    metaTestEventCode: !!process.env.META_CAPI_TEST_EVENT_CODE, // must be false in prod
     blobToken: !!process.env.BLOB_READ_WRITE_TOKEN, // short links + permanent songs
     emailFrom: process.env.EMAIL_FROM ?? null, // not secret
     automationWebhookUrl: !!process.env.AUTOMATION_WEBHOOK_URL, // boolean only
