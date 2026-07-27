@@ -17,11 +17,12 @@ declare global {
   }
 }
 
+/** content_ids is a stable SKU — it never changes with price. */
 export const META_PRODUCT = {
   content_ids: ["tou_song_19"],
   content_type: "product",
   content_name: "Personalized Love Song",
-  value: 19.0,
+  value: config.price.core,
   currency: "USD",
 } as const;
 

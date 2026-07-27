@@ -15,12 +15,12 @@ import { config } from "./config";
 /** Single source of truth for the Graph API version. */
 export const GRAPH_API_VERSION = "v25.0";
 
-/** The one product this store sells. */
+/** The one product this store sells. content_ids is a stable SKU. */
 export const META_PRODUCT = {
   contentIds: ["tou_song_19"],
   contentType: "product",
   contentName: "Personalized Love Song",
-  value: 19.0,
+  value: config.price.core,
   currency: "USD",
 } as const;
 

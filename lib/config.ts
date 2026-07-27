@@ -2,6 +2,11 @@
  * All tunable knobs in one place. Numbers you'll want to change as the
  * business grows live here or in env vars — never inside components.
  */
+/** Whole dollars. Falls back to the real price if the var is unset/invalid. */
+const CORE_PRICE_USD = Number(process.env.NEXT_PUBLIC_PRICE_USD) > 0
+  ? Number(process.env.NEXT_PUBLIC_PRICE_USD)
+  : 19;
+
 export const config = {
   /**
    * Couple-focused campaign: the funnel targets partners only, so the
@@ -10,10 +15,15 @@ export const config = {
    */
   coupleMode: true,
 
-  /** Prices in whole dollars (display) and cents (Stripe). */
+  /**
+   * Price in whole dollars, with cents derived for Stripe. Driven by
+   * NEXT_PUBLIC_PRICE_USD so it can be dropped to 1.00 for a cheap
+   * end-to-end tracking test and restored without a code change — every
+   * surface (copy, Stripe amount, pixel value) reads from here.
+   */
   price: {
-    core: 19,
-    coreCents: 1900,
+    core: CORE_PRICE_USD,
+    coreCents: Math.round(CORE_PRICE_USD * 100),
   },
 
   /** Launch-price pill. Flag only — never a fake countdown. */
