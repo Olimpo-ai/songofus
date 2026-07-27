@@ -1,5 +1,7 @@
 "use client";
 
+import { config } from "./config";
+
 /**
  * Browser-side Meta Pixel helpers.
  *
@@ -81,7 +83,7 @@ let advancedMatchingApplied = false;
  * second PageView (PageView only fires on an explicit track call).
  */
 export function applyAdvancedMatching(email?: string | null) {
-  const pixelId = process.env.NEXT_PUBLIC_META_PIXEL_ID;
+  const pixelId = config.metaPixelId;
   const normalized = (email ?? "").trim().toLowerCase();
   if (!pixelId || !normalized || advancedMatchingApplied) return;
   advancedMatchingApplied = true;

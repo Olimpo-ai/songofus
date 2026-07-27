@@ -5,7 +5,7 @@ import "./globals.css";
 import { config } from "@/lib/config";
 import UtmCapture from "@/components/UtmCapture";
 
-const META_PIXEL_ID = process.env.NEXT_PUBLIC_META_PIXEL_ID ?? "2240086196844764";
+const META_PIXEL_ID = config.metaPixelId;
 const CLARITY_ID = process.env.NEXT_PUBLIC_CLARITY_ID ?? "xr8hkijydq";
 /** Value from Events Manager → Settings → Verify Domain (meta-tag method). */
 const FB_DOMAIN_VERIFICATION = process.env.NEXT_PUBLIC_FB_DOMAIN_VERIFICATION;

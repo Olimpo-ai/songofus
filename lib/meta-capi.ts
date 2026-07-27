@@ -1,4 +1,5 @@
 import crypto from "crypto";
+import { config } from "./config";
 
 /**
  * Meta Conversions API — server-side Purchase.
@@ -79,10 +80,8 @@ export interface CapiResult {
  * structured line with the event_id for manual resend (see TRACKING.md).
  */
 export async function sendPurchaseEvent(event: PurchaseEvent): Promise<CapiResult> {
-  const pixelId = process.env.NEXT_PUBLIC_META_PIXEL_ID;
+  const pixelId = config.metaPixelId;
   const token = process.env.META_CAPI_ACCESS_TOKEN;
-
-  if (!pixelId) return { ok: false, error: "NEXT_PUBLIC_META_PIXEL_ID is not set" };
   if (!token) return { ok: false, error: "META_CAPI_ACCESS_TOKEN is not set" };
 
   const userData: Record<string, unknown> = {};

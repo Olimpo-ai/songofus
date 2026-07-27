@@ -21,6 +21,15 @@ export const config = {
 
   currency: "usd",
 
+  /**
+   * Meta pixel / CAPI dataset id. Single source of truth: the browser
+   * pixel, advanced matching and the server-side Purchase all read this.
+   * The literal fallback matters — NEXT_PUBLIC_* vars are inlined at build
+   * time, so an unset var would silently disable CAPI and advanced
+   * matching while the base pixel kept working.
+   */
+  metaPixelId: process.env.NEXT_PUBLIC_META_PIXEL_ID ?? "2240086196844764",
+
   siteUrl: process.env.NEXT_PUBLIC_SITE_URL ?? "https://tuneofus.com",
   supportEmail: "hello@tuneofus.com",
 
