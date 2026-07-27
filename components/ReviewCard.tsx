@@ -5,7 +5,7 @@ import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { content } from "@/lib/content";
 import { config } from "@/lib/config";
-import { events } from "@/lib/analytics";
+import { trackInitiateCheckout, getFbCookies, applyAdvancedMatching } from "@/lib/analytics";
 
 interface RecapBriefing {
   recipient: string;
@@ -47,6 +47,8 @@ export default function ReviewCard() {
     // server copy is only a fallback for cross-device links.
     const local = loadLocalOrder(orderId);
     if (local) {
+      // Email is known from here on — enable advanced matching.
+      applyAdvancedMatching(local.briefing?.email);
       setBriefing(local.briefing);
       return;
     }
@@ -63,9 +65,18 @@ export default function ReviewCard() {
     if (!orderId || loading) return;
     setLoading(true);
     setError(null);
-    events.initiateCheckout(total);
     try {
       const local = loadLocalOrder(orderId);
+      applyAdvancedMatching(local?.briefing?.email);
+
+      // One id shared by the browser event and the server-side Purchase.
+      const eventId =
+        typeof crypto !== "undefined" && crypto.randomUUID
+          ? crypto.randomUUID()
+          : `ic_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+      trackInitiateCheckout(eventId, total);
+      const { fbp, fbc } = getFbCookies();
+
       const res = await fetch("/api/checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -75,6 +86,9 @@ export default function ReviewCard() {
           product: "song",
           briefing: local?.briefing,
           utm: local?.utm,
+          eventId,
+          fbp,
+          fbc,
         }),
       });
       const data = await res.json();

@@ -4,11 +4,11 @@ import Link from "next/link";
 import { useEffect } from "react";
 import { content } from "@/lib/content";
 import { config } from "@/lib/config";
-import { events } from "@/lib/analytics";
+import { trackViewContent } from "@/lib/analytics";
 
 export default function Hero() {
   useEffect(() => {
-    events.viewContent();
+    trackViewContent();
   }, []);
 
   return (

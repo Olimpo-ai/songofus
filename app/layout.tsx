@@ -5,8 +5,10 @@ import "./globals.css";
 import { config } from "@/lib/config";
 import UtmCapture from "@/components/UtmCapture";
 
-const META_PIXEL_ID = process.env.NEXT_PUBLIC_META_PIXEL_ID ?? "1050133137708301";
+const META_PIXEL_ID = process.env.NEXT_PUBLIC_META_PIXEL_ID ?? "2240086196844764";
 const CLARITY_ID = process.env.NEXT_PUBLIC_CLARITY_ID ?? "xr8hkijydq";
+/** Value from Events Manager → Settings → Verify Domain (meta-tag method). */
+const FB_DOMAIN_VERIFICATION = process.env.NEXT_PUBLIC_FB_DOMAIN_VERIFICATION;
 
 const fraunces = Fraunces({
   subsets: ["latin"],
@@ -49,6 +51,10 @@ export const metadata: Metadata = {
     description: "The story only you two share, turned into a song only you two will have.",
     images: ["/og/default.jpg"],
   },
+  // Meta domain verification (Events Manager → Settings → Verify Domain).
+  ...(FB_DOMAIN_VERIFICATION
+    ? { verification: { other: { "facebook-domain-verification": FB_DOMAIN_VERIFICATION } } }
+    : {}),
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

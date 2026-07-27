@@ -4,8 +4,7 @@ import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { content } from "@/lib/content";
-import { config } from "@/lib/config";
-import { track } from "@/lib/analytics";
+import { applyAdvancedMatching } from "@/lib/analytics";
 
 const CONFETTI_COLORS = ["#f5a3b1", "#e6b93f", "#8a0f33", "#ee5f36"];
 
@@ -78,25 +77,16 @@ export default function ThanksContent() {
   }, [sessionId]);
 
   useEffect(() => {
-    track("PurchaseClient", { order_id: orderId ?? "unknown" });
     if (!orderId) return;
-
-    // Meta Pixel Purchase — once per order, guarded via localStorage
-    try {
-      const guard = `tuneofus_purchased_${orderId}`;
-      if (!localStorage.getItem(guard) && typeof window.fbq === "function") {
-        window.fbq("track", "Purchase", {
-          value: config.price.core,
-          currency: "USD",
-        });
-        localStorage.setItem(guard, "1");
-      }
-    } catch {}
+    // NOTE: Purchase is NOT fired here. It is sent server-side only, via the
+    // Conversions API inside fulfillCheckoutSession (lib/fulfill.ts), so it
+    // survives iOS users who decline tracking. Do not add a browser Purchase.
 
     // Recap: localStorage first, server fallback
     try {
       const local = JSON.parse(localStorage.getItem("tuneofus_order") || "null");
       if (local?.orderId === orderId && local.briefing) {
+        applyAdvancedMatching(local.briefing.email);
         setRecap(local.briefing);
         setBump(!!local.bump);
         return;

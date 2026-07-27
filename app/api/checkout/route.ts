@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getStripe, briefingToMetadata } from "@/lib/stripe";
 import { getOrder, updateOrder } from "@/lib/store";
 import { config } from "@/lib/config";
+import { capMetadataValue } from "@/lib/meta-capi";
 
 /**
  * Creates a Stripe Checkout session for the one thing we can actually
@@ -23,6 +24,22 @@ export async function POST(req: NextRequest) {
     if (product && product !== "song") {
       return NextResponse.json({ error: "That product isn't available." }, { status: 400 });
     }
+
+    /**
+     * Meta attribution, captured here and replayed by the server-side
+     * Purchase (lib/meta-capi.ts). The client sends the event_id it used
+     * for InitiateCheckout plus its _fbp/_fbc cookies; the IP and UA must
+     * come from the request itself, not from the browser payload.
+     */
+    const forwardedFor = req.headers.get("x-forwarded-for") ?? "";
+    const clientIp = forwardedFor.split(",")[0]?.trim() ?? "";
+    const clientUserAgent = req.headers.get("user-agent") ?? "";
+    const metaMetadata: Record<string, string> = {};
+    if (typeof body.eventId === "string" && body.eventId) metaMetadata.fb_event_id = body.eventId;
+    if (typeof body.fbp === "string" && body.fbp) metaMetadata.fb_fbp = capMetadataValue("fb_fbp", body.fbp);
+    if (typeof body.fbc === "string" && body.fbc) metaMetadata.fb_fbc = capMetadataValue("fb_fbc", body.fbc);
+    if (clientIp) metaMetadata.fb_client_ip = capMetadataValue("fb_client_ip", clientIp);
+    if (clientUserAgent) metaMetadata.fb_client_ua = capMetadataValue("fb_client_ua", clientUserAgent);
     // Store lookup is best-effort (serverless FS is ephemeral) — the
     // client sends its own copy of the briefing as the source of truth.
     const order = await getOrder(orderId).catch(() => null);
@@ -58,6 +75,7 @@ export async function POST(req: NextRequest) {
       cancel_url: `${origin}/review?oid=${orderId}`,
       metadata: {
         ...briefingToMetadata(orderId, briefing, utm, false),
+        ...metaMetadata,
         product: "song",
       },
       payment_intent_data: {

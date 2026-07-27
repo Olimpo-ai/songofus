@@ -3,6 +3,7 @@ import { metadataToBriefing } from "./stripe";
 import { startSongGeneration, encodeDelivery } from "./kie";
 import { sendConfirmationEmail } from "./email";
 import { updateOrder } from "./store";
+import { sendPurchaseEvent } from "./meta-capi";
 
 /**
  * Confirmation email + start the Suno render. The finished song is emailed
@@ -54,6 +55,52 @@ async function startDelivery(data: ReturnType<typeof metadataToBriefing>, origin
 
 /** An in-flight claim older than this is assumed dead and can be retaken. */
 const CLAIM_STALE_MS = 3 * 60 * 1000;
+
+/**
+ * Server-side Purchase for Meta. Wrapped so a Meta outage can never break
+ * order processing: on failure we emit one structured line carrying the
+ * event_id, which is all TRACKING.md needs to resend it by hand. No PII is
+ * logged — the email is only ever sent hashed, inside the payload.
+ */
+async function sendPurchaseToMeta(md: Record<string, string>, session: Stripe.Checkout.Session) {
+  const eventId = md.fb_event_id;
+  if (!eventId) {
+    console.warn("[meta] no fb_event_id in session metadata; skipping Purchase", {
+      session_id: session.id,
+    });
+    return;
+  }
+  try {
+    const amount = typeof session.amount_total === "number" ? session.amount_total / 100 : undefined;
+    const result = await sendPurchaseEvent({
+      eventId,
+      email: md.customer_email,
+      fbp: md.fb_fbp,
+      fbc: md.fb_fbc,
+      clientIpAddress: md.fb_client_ip,
+      clientUserAgent: md.fb_client_ua,
+      eventSourceUrl: `${process.env.NEXT_PUBLIC_SITE_URL ?? "https://www.tuneofus.com"}/`,
+      value: amount,
+      currency: (session.currency ?? "usd").toUpperCase(),
+    });
+    if (result.ok) {
+      console.log("[meta] purchase sent", { event_id: eventId, received: result.eventsReceived });
+    } else {
+      console.error("[meta] PURCHASE_FAILED — resend manually, see TRACKING.md", {
+        event_id: eventId,
+        session_id: session.id,
+        status: result.status,
+        error: result.error,
+      });
+    }
+  } catch (err) {
+    console.error("[meta] PURCHASE_FAILED — resend manually, see TRACKING.md", {
+      event_id: eventId,
+      session_id: session.id,
+      error: err instanceof Error ? err.message : "unknown",
+    });
+  }
+}
 
 /**
  * Idempotently fulfill a paid Checkout Session. Called by BOTH the success
@@ -108,6 +155,10 @@ export async function fulfillCheckoutSession(
   const data = metadataToBriefing(md);
   try {
     await startDelivery(data, origin);
+    // Purchase → Meta CAPI. Inside the claim, so it runs exactly once per
+    // order whether the webhook or the success page got here first. Never
+    // allowed to fail the order: a failure is logged for manual resend.
+    await sendPurchaseToMeta(md, session);
   } catch (err) {
     // Release the claim so the webhook retry (or a refresh) can try again.
     if (claimed && piId) {
