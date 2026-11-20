@@ -44,14 +44,15 @@ The poster JPGs, moment photo and OG image ship with **AI-generated placeholders
 
 ```
 /            landing (ViewContent)
-/create      6-step Typeform-style briefing (StartForm, CompleteStep 1–6)
+/create      Typeform-style briefing (StartForm, CompleteStep, Lead on submit)
              → POST /api/briefing (pending order) →
-/review      order recap + $15 order-bump checkbox (InitiateCheckout)
+/review      order recap (InitiateCheckout)
              → POST /api/checkout → Stripe hosted Checkout (Apple/Google Pay) →
-/thanks      confetti + recap + $30 photo-video upsell (second Checkout)
+/thanks      confetti + recap + Purchase (browser pixel via GET /api/purchase-info)
+             + POST /api/fulfill (server fulfillment + CAPI Purchase)
 
 Stripe → /api/stripe/webhook (checkout.session.completed)
-       → marks order paid → POSTs full briefing to AUTOMATION_WEBHOOK_URL
+       → idempotent fulfillment + server CAPI Purchase
 ```
 
 The briefing is **chunked into Stripe session metadata**, so the webhook can rebuild it even if local storage is gone — this is what makes the JSON-file store safe on serverless.
@@ -157,9 +158,11 @@ On Vercel, the filesystem is ephemeral — the webhook works anyway because it r
 
 ## Analytics
 
-Client events push to `window.dataLayer` (GTM) and Meta Pixel if `fbq` is present: `ViewContent`, `StartForm`, `CompleteStep(n)`, `InitiateCheckout`. The authoritative **Purchase** signal is server-side — your n8n receives it from the webhook and can forward to Meta CAPI. UTM params are captured on landing (first touch), persisted through the form, and attached to Stripe metadata, so revenue is attributable per ad creative.
+No GTM or `dataLayer` — tracking uses Meta Pixel (`fbq`) directly in the browser and Meta Conversions API on the server (full details in [TRACKING.md](TRACKING.md)). UTM params are captured on landing (first touch), persisted through the form, and attached to Stripe metadata.
 
-**Meta Pixel is installed** in `app/layout.tsx` (base code + PageView). The ID defaults to `1050133137708301` and can be overridden with `NEXT_PUBLIC_META_PIXEL_ID`. Standard events fire automatically: `StartForm` / `CompleteStep` / `InitiateCheckout` via `lib/analytics.ts`, and **`Purchase`** on the `/thanks` page (deduplicated per order via localStorage, with the real order value + bump). For server-side accuracy, also wire Meta CAPI from the Stripe webhook — that Purchase is the authoritative one.
+- **Browser pixel ("Song of Us", `1050133137708301`):** configured via `NEXT_PUBLIC_META_BROWSER_PIXEL_ID` (`config.metaBrowserPixelId`), installed in `app/layout.tsx` (base code + `PageView`), with advanced matching and events in `lib/analytics.ts`: `ViewContent`, `StartForm`, `CompleteStep`, `Lead` (wizard submit, once per `orderId`), `InitiateCheckout`, and `Purchase` (on `/thanks` after server-verified `GET /api/purchase-info`, once per checkout session, with `eventID = fb_event_id`).
+- **Server CAPI (`2240086196844764`):** configured via `NEXT_PUBLIC_META_PIXEL_ID` (`config.metaPixelId`) + `META_CAPI_ACCESS_TOKEN`, sending server-side `Purchase` from `lib/fulfill.ts` (`lib/meta-capi.ts`).
+- **Deduplication:** because browser (`1050133137708301`) and server CAPI (`2240086196844764`) currently target different pixels, there is no cross-pixel deduplication between them (and each pixel individually never duplicates a purchase). Once a CAPI token for `1050133137708301` is provisioned, unify server CAPI onto `1050133137708301` so Meta deduplicates browser + server `Purchase` via `event_id`.
 
 ## Stripe: test → live checklist
 
@@ -174,7 +177,7 @@ Client events push to `window.dataLayer` (GTM) and Meta Pixel if `fbq` is presen
 - [ ] Drop 3 real demo MP3s in `public/audio/`
 - [ ] Drop at least 4 real reaction videos + posters in `public/reactions/`
 - [ ] `public/og/default.jpg` (1200×630) — test with opengraph.xyz
-- [ ] GTM container + Meta Pixel in `app/layout.tsx`; verify events in Meta Events Manager
+- [ ] Verify Meta Pixel (`1050133137708301`) + server CAPI events in Meta Events Manager
 - [ ] Stripe live keys + live webhook (above)
 - [ ] `AUTOMATION_WEBHOOK_URL` pointing at production n8n; test an end-to-end order
 - [ ] `NEXT_PUBLIC_SITE_URL=https://www.tuneofus.com` in Vercel env (canonical www host)

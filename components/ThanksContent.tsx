@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { content } from "@/lib/content";
-import { applyAdvancedMatching } from "@/lib/analytics";
+import { applyAdvancedMatching, trackPurchase } from "@/lib/analytics";
 
 const CONFETTI_COLORS = ["#f5a3b1", "#e6b93f", "#8a0f33", "#ee5f36"];
 
@@ -76,11 +76,32 @@ export default function ThanksContent() {
       });
   }, [sessionId]);
 
+  // Browser Purchase fires on the browser pixel (1050) with eventID = fb_event_id.
+  // The server continues sending Purchase to the CAPI pixel (2240) — different
+  // pixels, so there is no cross-dedup between them; within the same pixel a
+  // purchase is never duplicated.
+  useEffect(() => {
+    if (!sessionId) return;
+    let cancelled = false;
+    fetch(`/api/purchase-info?session_id=${encodeURIComponent(sessionId)}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (cancelled || !data?.eventId) return;
+        trackPurchase({
+          eventId: data.eventId,
+          value: data.value,
+          currency: data.currency,
+          sessionId,
+        });
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [sessionId]);
+
   useEffect(() => {
     if (!orderId) return;
-    // NOTE: Purchase is NOT fired here. It is sent server-side only, via the
-    // Conversions API inside fulfillCheckoutSession (lib/fulfill.ts), so it
-    // survives iOS users who decline tracking. Do not add a browser Purchase.
 
     // Recap: localStorage first, server fallback
     try {

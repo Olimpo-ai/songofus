@@ -3,11 +3,11 @@
 import { config } from "./config";
 
 /**
- * Browser-side Meta Pixel helpers.
+ * Browser-side Meta Pixel helpers (targeting `config.metaBrowserPixelId`).
  *
- * Purchase is deliberately NOT here — it is sent server-side only, via the
- * Conversions API (lib/meta-capi.ts), so conversions survive iOS users who
- * decline tracking. The browser fires ViewContent and InitiateCheckout.
+ * Fires ViewContent, Lead, InitiateCheckout, and Purchase (on /thanks after
+ * server verification), plus custom funnel signals. Server-side CAPI
+ * (lib/meta-capi.ts) continues sending Purchase to `config.metaPixelId`.
  *
  * No GTM, no dataLayer, no third-party wrapper: just fbq.
  */
@@ -84,7 +84,7 @@ let advancedMatchingApplied = false;
  * second PageView (PageView only fires on an explicit track call).
  */
 export function applyAdvancedMatching(email?: string | null) {
-  const pixelId = config.metaPixelId;
+  const pixelId = config.metaBrowserPixelId;
   const normalized = (email ?? "").trim().toLowerCase();
   if (!pixelId || !normalized || advancedMatchingApplied) return;
   advancedMatchingApplied = true;
@@ -105,9 +105,22 @@ export function trackViewContent() {
 }
 
 /**
+ * Fired when the buyer submits their song brief in the wizard.
+ * Browser-only: the server CAPI currently uses a separate pixel/token.
+ */
+export function trackLead(eventId: string) {
+  fbq(
+    "track",
+    "Lead",
+    { content_name: "Song brief", content_category: "love_song" },
+    { eventID: eventId }
+  );
+}
+
+/**
  * Fired in the buy-button handler, immediately before creating the Stripe
  * session. The returned event_id is persisted in the session metadata and
- * reused by the server-side Purchase.
+ * reused by both browser Purchase (/thanks) and server-side CAPI Purchase.
  */
 export function trackInitiateCheckout(eventId: string, value: number = META_PRODUCT.value) {
   fbq(
@@ -116,6 +129,67 @@ export function trackInitiateCheckout(eventId: string, value: number = META_PROD
     { ...META_PRODUCT, value },
     { eventID: eventId }
   );
+}
+
+const purchaseClaimedSessions = new Set<string>();
+
+export interface PurchaseParams {
+  eventId: string;
+  value: number;
+  currency: string;
+  sessionId: string;
+}
+
+/**
+ * Fired on /thanks once per checkout session after verifying payment via
+ * GET /api/purchase-info. Guarded by a module-level Set (marked before any
+ * retry to defeat StrictMode/re-renders) and localStorage (written after
+ * fbq actually fires). Retries briefly if `window.fbq` hasn't loaded yet.
+ */
+export function trackPurchase({ eventId, value, currency, sessionId }: PurchaseParams) {
+  if (typeof window === "undefined" || !eventId || !sessionId) return;
+  if (purchaseClaimedSessions.has(sessionId)) return;
+
+  const storageKey = `tou_purchase_pixel_${sessionId}`;
+  try {
+    if (localStorage.getItem(storageKey)) {
+      purchaseClaimedSessions.add(sessionId);
+      return;
+    }
+  } catch {}
+
+  // Mark module guard before any async retry so re-renders / StrictMode never double-schedule.
+  purchaseClaimedSessions.add(sessionId);
+
+  const fire = (attempt: number) => {
+    if (typeof window === "undefined") return;
+    if (typeof window.fbq === "function") {
+      try {
+        window.fbq(
+          "track",
+          "Purchase",
+          {
+            content_ids: ["tou_song_19"],
+            content_type: "product",
+            content_name: "Personalized Love Song",
+            value,
+            currency,
+          },
+          { eventID: eventId }
+        );
+      } catch {
+        return;
+      }
+      try {
+        localStorage.setItem(storageKey, "1");
+      } catch {}
+      return;
+    }
+    if (attempt >= 10) return;
+    window.setTimeout(() => fire(attempt + 1), 500);
+  };
+
+  fire(0);
 }
 
 /** Funnel-progress signals (custom events, no standard-event mapping). */
