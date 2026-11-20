@@ -17,6 +17,7 @@ export async function GET() {
     resendKey: !!process.env.RESEND_API_KEY,
     // Meta tracking
     metaPixelId: config.metaPixelId, // effective value (public by design)
+    metaBrowserPixelId: config.metaBrowserPixelId, // browser pixel (public by design)
     metaCapiToken: !!process.env.META_CAPI_ACCESS_TOKEN, // required for Purchase
     metaTestEventCode: !!process.env.META_CAPI_TEST_EVENT_CODE, // must be false in prod
     blobToken: !!process.env.BLOB_READ_WRITE_TOKEN, // short links + permanent songs

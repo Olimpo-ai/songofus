@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { content } from "@/lib/content";
 import { config } from "@/lib/config";
-import { events } from "@/lib/analytics";
+import { events, trackLead } from "@/lib/analytics";
 import { getUtm } from "@/lib/utm";
 import type { Briefing } from "@/lib/types";
 
@@ -336,6 +336,18 @@ export default function Wizard() {
     try {
       localStorage.setItem("tuneofus_order", JSON.stringify({ orderId, briefing, utm }));
     } catch {}
+    // Browser-only Lead — server CAPI uses a separate pixel/token.
+    const leadKey = `tou_lead_pixel_${orderId}`;
+    let leadSent = false;
+    try {
+      leadSent = !!sessionStorage.getItem(leadKey);
+    } catch {}
+    if (!leadSent) {
+      trackLead(crypto.randomUUID());
+      try {
+        sessionStorage.setItem(leadKey, "1");
+      } catch {}
+    }
     router.push(`/review?oid=${orderId}`);
   };
 
